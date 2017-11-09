@@ -179,7 +179,9 @@ class RAM(base):
             labels = allLabels[idx:idx+self.params.eval_batch_size]
             #Write summary on first step only
             correct_count += self.evalModel(images, labels)
-        accuracy = correct_count / numExamples
+            idx += self.params.eval_batch_size
+
+        accuracy = float(correct_count) / numExamples
         #Eval with last set of images and labels, with the final accuracy
         self.evalModelSummary(images, labels, accuracy)
 
