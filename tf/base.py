@@ -6,7 +6,7 @@ import scipy.sparse as sp
 import subprocess
 import json
 import time
-from util import createImageBuf, normImage
+from tf.utils import createImageBuf, normImage
 
 class base(object):
     #Global timestep
@@ -19,7 +19,7 @@ class base(object):
     varDict = {}
 
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
-    def __init__(self, params, inputShape):
+    def __init__(self, params):
         self.params = params
         self.makeDirs()
         #TODO
@@ -44,7 +44,7 @@ class base(object):
         config.allow_soft_placement=True
         self.sess = tf.Session(config=config)
 
-        self.buildModel(inputShape)
+        self.buildModel()
         self.buildSummaries()
         self.initialize()
         self.writeSummary()
@@ -80,18 +80,17 @@ class base(object):
         if not os.path.exists(self.params.run_dir):
             os.makedirs(self.params.run_dir)
         if not os.path.exists(self.params.plot_dir):
-            os.makedirs(self.params.plotDir)
+            os.makedirs(self.params.plot_dir)
         if not os.path.exists(self.params.ckpt_dir):
             os.makedirs(self.params.ckpt_dir)
 
-    def trainModel(self, trainDataObj, testDataObj=None):
+    def trainModel(self, trainDataObj):
         progress_time = time.time()
         for i in range(self.params.num_steps):
-            if(i%self.params.eval_period == 0 and testDataObj is not None):
+            if(i%self.params.eval_period == 0):
                 #Evaluate test frame, providing gt so that it writes to summary
-                data = testDataObj.getData(self.batch_size)
-                self.evalModel(data[0], data[1], calcOutput=False)
-                print "Done test eval"
+                self.evalModelBatch(trainDataObj)
+                print("Done test eval")
             #Plot flag
             if(i%self.params.save_period == 0):
                 #Save meta graph if beginning of run
@@ -102,9 +101,9 @@ class base(object):
                 save_path = self.saver.save(self.sess, self.params.save_file, global_step=self.timestep, write_meta_graph=write_meta_graph)
                 print("Model saved in file: %s" % save_path)
             #Progress print
-            if(i%self.progress == 0):
+            if(i%self.params.progress == 0):
                 tmp_time = time.time()
-                print "Timestep ", self.timestep, ":", float(self.params.progress)/(tmp_time - progress_time), " iterations per second"
+                print("Timestep ", self.timestep, ":", float(self.params.progress)/(tmp_time - progress_time), " iterations per second")
                 progress_time = tmp_time
 
             self.trainStep(i, trainDataObj)
@@ -119,8 +118,8 @@ class base(object):
         #Subclass must overwrite this
         assert(False)
 
-    def buildModel(self, inputShape):
-        print "Cannot call base class buildModel"
+    def buildModel(self):
+        print("Cannot call base class buildModel")
         assert(0)
 
     def addImageSummary(self, name, tensor, normalize=True):
@@ -146,8 +145,14 @@ class base(object):
 
                 opsList.append(grid_op)
                 opsList_test.append(grid_op_test)
-            self.updateImgOp = tf.tuple(opsList)
-            self.updateImgOp_test = tf.tuple(opsList_test)
+            if(len(opsList)):
+                self.updateImgOp = tf.tuple(opsList)
+            else:
+                self.updateImgOp = tf.no_op()
+            if(len(opsList_test)):
+                self.updateImgOp_test = tf.tuple(opsList_test)
+            else:
+                self.updateImgOp_test = tf.no_op()
 
         trainSummaries = []
         testSummaries = []
@@ -202,7 +207,7 @@ class base(object):
             #Initialize
             self.initSess()
             #Load checkpoint if flag set
-            if(self.load):
+            if(self.params.load):
                 self.loadModel()
 
     def guarantee_initialized_variables(self, session, list_of_variables = None):
@@ -220,17 +225,17 @@ class base(object):
     #Allocates and specifies the output directory for tensorboard summaries
     def writeSummary(self):
         self.mergedSummary = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter(self.tfDir + "/train", self.sess.graph)
-        self.test_writer = tf.summary.FileWriter(self.tfDir + "/test")
+        self.train_writer = tf.summary.FileWriter(self.params.tf_dir + "/train", self.sess.graph)
+        self.test_writer = tf.summary.FileWriter(self.params.tf_dir + "/test")
 
     def closeSess(self):
         self.sess.close()
         tf.reset_default_graph()
 
-    def evalModelBatch(self, dataObj):
+    def evalModel(self, images, labels):
         assert(False)
 
-    def evalModel(self, image, gt=None, calcOutput=True):
+    def evalBatchModel(self, dataObj):
         assert(False)
 
     #Loads a tf checkpoint
