@@ -14,13 +14,14 @@ class RAM(base):
     sampled_loc_arr = []
 
     def get_next_input(self, output, i):
-      loc, loc_mean = self.loc_net(output)
-      gl_next = self.gl(loc)
-      self.loc_mean_arr.append(loc_mean)
-      self.sampled_loc_arr.append(loc)
-      return gl_next
+        #Output is the output of the previous step in LSTM
+        #i.e., hidden state h
+        loc, loc_mean = self.loc_net(output)
+        gl_next = self.gl(loc)
+        self.loc_mean_arr.append(loc_mean)
+        self.sampled_loc_arr.append(loc)
+        return gl_next
 
-    #Builds the model. inMatFilename should be the vgg file
     def buildModel(self):
         inputShape = (self.params.original_size, self.params.original_size, self.params.num_channels)
         #Running on GPU
@@ -30,9 +31,18 @@ class RAM(base):
                         shape=[None,
                             inputShape[0]*inputShape[1]*inputShape[2]],
                         name = "images")
+
+                reshape_images = tf.reshape(self.images, [-1, inputShape[0], inputShape[1], inputShape[2]])
+                #self.addImageSummary('images', reshape_images, False)
+                tf.summary.image('images', reshape_images)
+
+                self.varDict['images'] = self.images
+
                 self.labels = tf.placeholder(tf.int64,
                         shape=[None],
                         name="labels")
+                self.varDict['labels'] = self.labels
+
 
             #Build aux nets
             # Build the aux nets.
@@ -63,9 +73,9 @@ class RAM(base):
                 outputs, _ = seq2seq.rnn_decoder(
                     inputs, init_state, lstm_cell, loop_function=self.get_next_input)
 
-            #Baseline for variance reduction (see eq 2)
+            #Baseline for variance reduction
             with tf.variable_scope('baseline'):
-                w_baseline = weight_variable((self.params.cell_output_size, 1))
+                w_baseline = weight_variable((self.params.cell_size, 1))
                 b_baseline = bias_variable((1,))
                 baselines = []
                 for t, output in enumerate(outputs[1:]):
@@ -79,7 +89,8 @@ class RAM(base):
             with tf.variable_scope('classification_net'):
                 # Take the last step only.
                 output = outputs[-1]
-                w_logit = weight_variable((self.params.cell_output_size, self.params.num_classes))
+                #Pass through classification network for reward
+                w_logit = weight_variable((self.params.cell_size, self.params.num_classes))
                 b_logit = bias_variable((self.params.num_classes,))
                 logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
                 self.softmax = tf.nn.softmax(logits)

@@ -128,43 +128,46 @@ class base(object):
 
     def buildSummaries(self):
         ##Summaries ops
-        #Write all images as a grid
-        with tf.name_scope("Summary"):
-            opsList = []
-            opsList_test = []
-            gridList = {}
-            gridList_test = {}
 
-            for key in self.imageDict.keys():
-                (tensor, normalize) = self.imageDict[key]
-                (grid_image, grid_op) = createImageBuf(tensor, key+"_grid")
-                (grid_image_test, grid_op_test) = createImageBuf(tensor, key+"_grid_test")
+        #TODO fix this
+        ##Write all images as a grid
+        #with tf.name_scope("Summary"):
+        #    opsList = []
+        #    opsList_test = []
+        #    gridList = {}
+        #    gridList_test = {}
 
-                gridList[key] = (grid_image, normalize)
-                gridList_test[key] = (grid_image_test, normalize)
+        #    for key in self.imageDict.keys():
+        #        (tensor, normalize) = self.imageDict[key]
+        #        (grid_image, grid_op) = createImageBuf(tensor, key+"_grid")
+        #        (grid_image_test, grid_op_test) = createImageBuf(tensor, key+"_grid_test")
 
-                opsList.append(grid_op)
-                opsList_test.append(grid_op_test)
-            if(len(opsList)):
-                self.updateImgOp = tf.tuple(opsList)
-            else:
-                self.updateImgOp = tf.no_op()
-            if(len(opsList_test)):
-                self.updateImgOp_test = tf.tuple(opsList_test)
-            else:
-                self.updateImgOp_test = tf.no_op()
+        #        gridList[key] = (grid_image, normalize)
+        #        gridList_test[key] = (grid_image_test, normalize)
+
+        #        opsList.append(grid_op)
+        #        opsList_test.append(grid_op_test)
+        #    if(len(opsList)):
+        #        self.updateImgOp = tf.tuple(opsList)
+        #    else:
+        #        self.updateImgOp = tf.no_op()
+        #    if(len(opsList_test)):
+        #        self.updateImgOp_test = tf.tuple(opsList_test)
+        #    else:
+        #        self.updateImgOp_test = tf.no_op()
 
         trainSummaries = []
         testSummaries = []
         bothSummaries = []
-        for key in gridList.keys():
-            (tensor, normalize) = gridList[key]
-            (test_tensor, test_normalize) = gridList_test[key]
-            assert(test_normalize == normalize)
+        #for key in gridList.keys():
+        for key in self.imageDict.keys():
+            #(tensor, normalize) = gridList[key]
+            #(test_tensor, test_normalize) = gridList_test[key]
+            #assert(test_normalize == normalize)
             #Create images per item in imageDict
-            trainSummaries.append(tf.summary.image(key+"_grid_train", normImage(tensor, normalize)))
-            testSummaries.append(tf.summary.image(key+"_grid_test", normImage(test_tensor, test_normalize)))
-            bothSummaries.append(tf.summary.image(key, normImage(self.imageDict[key][0], normalize)))
+            #trainSummaries.append(tf.summary.image(key+"_grid_train", normImage(tensor, normalize)))
+            #testSummaries.append(tf.summary.image(key+"_grid_test", normImage(test_tensor, test_normalize)))
+            bothSummaries.append(tf.summary.image(key, normImage(self.imageDict[key][0], self.imageDict[key][1])))
             bothSummaries.append(tf.summary.histogram(key, self.imageDict[key][0]))
 
         #Output tensorboard summaries
@@ -185,13 +188,13 @@ class base(object):
         trainSummary = self.sess.run(self.mergeTrainSummary, feed_dict=feed_dict)
         self.train_writer.add_summary(trainSummary, self.timestep)
         #Update image grid buffers
-        self.sess.run(self.updateImgOp, feed_dict=feed_dict)
+        #self.sess.run(self.updateImgOp, feed_dict=feed_dict)
 
     def writeTestSummary(self, feed_dict):
         testSummary = self.sess.run(self.mergeTestSummary, feed_dict=feed_dict)
         self.test_writer.add_summary(testSummary, self.timestep)
         #Update image grid buffers
-        self.sess.run(self.updateImgOp_test, feed_dict=feed_dict)
+        #self.sess.run(self.updateImgOp_test, feed_dict=feed_dict)
 
     def getLoadVars(self):
         return tf.global_variables()

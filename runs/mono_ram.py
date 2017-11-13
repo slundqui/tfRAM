@@ -44,30 +44,25 @@ class Params(object):
     num_train_examples = dataObj.num_train_examples
 
     #RAM params
-    win_size           = 8
-    bandwidth          = win_size**2
-    batch_size         = 32
-    eval_batch_size    = 50
-    loc_std            = 0.22
-    original_size      = 28
-    num_channels       = 1
-    depth              = 1
-    sensor_size        = win_size**2 * depth
-    minRadius          = 8
-    hg_size            = 128
-    hl_size            = 128
-    g_size             = 256
-    cell_output_size   = 256
-    loc_dim            = 2
-    cell_size          = 256
-    cell_out_size      = cell_size
-    num_glimpses       = 6
-    num_classes        = 10
-    max_grad_norm      = 5.
+    win_size           = 8       #The size of each glimpse in pixels in both x and y dimension
+    batch_size         = 32      #Batch size of training
+    eval_batch_size    = 50      #Batch size of testing
+    loc_std            = 0.22    #Standard deviation of random noise added to locations
+    original_size      = dataObj.inputShape #Size of the input image in (y, x, f)
+    num_channels       = 1       #Number of channels in input image
+    sensor_size        = win_size**2 * num_channels #Total size of input glimpse
+    hg_size            = 128     #Number of features in first layer for glimpse encode
+    hl_size            = 128     #Number of features in first layer for location encode
+    g_size             = 256     #Number of features in second layer (combine g and l)
+    loc_dim            = 2       #Number of dimensions used in the location output
+    cell_size          = 256     #Size of hidden latent space in LSTM
+    num_glimpses       = 6       #Number of total glimpses
+    num_classes        = 10      #Number of output classes
+    max_grad_norm      = 5.      #Clipping norm for gradient clipping
 
-    num_steps          = 100000
-    lr_start           = 1e-3
-    lr_min             = 1e-4
+    num_steps          = 100000  #Number of total steps
+    lr_start           = 1e-3    #Starting learning rate for lr decay
+    lr_min             = 1e-4    #Minimum learning rate for lr decay
 
     # Monte Carlo sampling
     M                  = 10

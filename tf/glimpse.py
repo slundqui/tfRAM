@@ -6,6 +6,8 @@ import tensorflow as tf
 
 from tf.utils import weight_variable, bias_variable
 
+import pdb
+
 
 class GlimpseNet(object):
   """Glimpse network.
@@ -15,93 +17,101 @@ class GlimpseNet(object):
   """
 
   def __init__(self, config, images_ph):
-    self.original_size = config.original_size
-    self.num_channels = config.num_channels
-    self.sensor_size = config.sensor_size
-    self.win_size = config.win_size
-    self.minRadius = config.minRadius
-    self.depth = config.depth
+      #Only allow square images for now
+      assert(self.original_size[0] == self.original_size[1])
+      self.original_size = config.original_size
+      self.num_channels = config.num_channels
+      self.sensor_size = config.sensor_size
+      self.win_size = config.win_size
+      #self.minRadius = config.minRadius
+      #self.depth = config.depth
 
-    self.hg_size = config.hg_size
-    self.hl_size = config.hl_size
-    self.g_size = config.g_size
-    self.loc_dim = config.loc_dim
+      self.hg_size = config.hg_size
+      self.hl_size = config.hl_size
+      self.g_size = config.g_size
+      self.loc_dim = config.loc_dim
 
-    self.images_ph = images_ph
+      self.images_ph = images_ph
 
-    self.init_weights()
+      self.init_weights()
 
   def init_weights(self):
-    """ Initialize all the trainable weights."""
-    self.w_g0 = weight_variable((self.sensor_size, self.hg_size))
-    self.b_g0 = bias_variable((self.hg_size,))
-    self.w_l0 = weight_variable((self.loc_dim, self.hl_size))
-    self.b_l0 = bias_variable((self.hl_size,))
-    self.w_g1 = weight_variable((self.hg_size, self.g_size))
-    self.b_g1 = bias_variable((self.g_size,))
-    self.w_l1 = weight_variable((self.hl_size, self.g_size))
-    self.b_l1 = weight_variable((self.g_size,))
+      """ Initialize all the trainable weights."""
+      self.w_g0 = weight_variable((self.sensor_size, self.hg_size))
+      self.b_g0 = bias_variable((self.hg_size,))
+      self.w_l0 = weight_variable((self.loc_dim, self.hl_size))
+      self.b_l0 = bias_variable((self.hl_size,))
+      self.w_g1 = weight_variable((self.hg_size, self.g_size))
+      self.b_g1 = bias_variable((self.g_size,))
+      self.w_l1 = weight_variable((self.hl_size, self.g_size))
+      self.b_l1 = weight_variable((self.g_size,))
 
   def get_glimpse(self, loc):
-    """Take glimpse on the original images."""
-    imgs = tf.reshape(self.images_ph, [
-        tf.shape(self.images_ph)[0], self.original_size, self.original_size,
-        self.num_channels
-    ])
-    glimpse_imgs = tf.image.extract_glimpse(imgs,
-                                            [self.win_size, self.win_size], loc)
-    glimpse_imgs = tf.reshape(glimpse_imgs, [
-        tf.shape(loc)[0], self.win_size * self.win_size * self.num_channels
-    ])
-    return glimpse_imgs
+      """Take glimpse on the original images."""
+      imgs = tf.reshape(self.images_ph, [
+          tf.shape(self.images_ph)[0], self.original_size[0], self.original_size[1],
+          self.original_size[2]
+      ])
+      glimpse_imgs = tf.image.extract_glimpse(imgs,
+                                              [self.win_size, self.win_size], loc)
+      glimpse_imgs = tf.reshape(glimpse_imgs, [
+          tf.shape(loc)[0], self.win_size * self.win_size * self.num_channels
+      ])
+      return glimpse_imgs
 
   def __call__(self, loc):
-    glimpse_input = self.get_glimpse(loc)
-    glimpse_input = tf.reshape(glimpse_input,
-                               (tf.shape(loc)[0], self.sensor_size))
-    g = tf.nn.relu(tf.nn.xw_plus_b(glimpse_input, self.w_g0, self.b_g0))
-    g = tf.nn.xw_plus_b(g, self.w_g1, self.b_g1)
-    l = tf.nn.relu(tf.nn.xw_plus_b(loc, self.w_l0, self.b_l0))
-    l = tf.nn.xw_plus_b(l, self.w_l1, self.b_l1)
-    g = tf.nn.relu(g + l)
-    return g
+      glimpse_input = self.get_glimpse(loc)
+      glimpse_input = tf.reshape(glimpse_input,
+                                 (tf.shape(loc)[0], self.sensor_size))
+      #G pipeline, which encodes glimpse
+      g = tf.nn.relu(tf.nn.xw_plus_b(glimpse_input, self.w_g0, self.b_g0))
+      g = tf.nn.xw_plus_b(g, self.w_g1, self.b_g1)
+      #L pipeline, which encode locations
+      l = tf.nn.relu(tf.nn.xw_plus_b(loc, self.w_l0, self.b_l0))
+      l = tf.nn.xw_plus_b(l, self.w_l1, self.b_l1)
+      #Combine
+      g = tf.nn.relu(g + l)
+      return g
 
 
 class LocNet(object):
-  """Location network.
+    """Location network.
 
-  Take output from other network and produce and sample the next location.
+    Take hidden state from core LSTM and calculates next location
 
-  """
+    """
 
-  def __init__(self, config):
-    self.loc_dim = config.loc_dim
-    self.input_dim = config.cell_output_size
-    self.loc_std = config.loc_std
-    self._sampling = True
+    def __init__(self, config):
+        self.loc_dim = config.loc_dim
+        self.input_dim = config.cell_size
+        self.loc_std = config.loc_std
+        self._sampling = True
 
-    self.init_weights()
+        self.init_weights()
 
-  def init_weights(self):
-    self.w = weight_variable((self.input_dim, self.loc_dim))
-    self.b = bias_variable((self.loc_dim,))
+    def init_weights(self):
+        self.w = weight_variable((self.input_dim, self.loc_dim))
+        self.b = bias_variable((self.loc_dim,))
 
-  def __call__(self, input):
-    mean = tf.clip_by_value(tf.nn.xw_plus_b(input, self.w, self.b), -1., 1.)
-    mean = tf.stop_gradient(mean)
-    if self._sampling:
-      loc = mean + tf.random_normal(
-          (tf.shape(input)[0], self.loc_dim), stddev=self.loc_std)
-      loc = tf.clip_by_value(loc, -1., 1.)
-    else:
-      loc = mean
-    loc = tf.stop_gradient(loc)
-    return loc, mean
+    def __call__(self, input):
+        mean = tf.clip_by_value(tf.nn.xw_plus_b(input, self.w, self.b), -1., 1.)
+        #Stops gradient propogation
+        mean = tf.stop_gradient(mean)
+        if self._sampling:
+            #Adds random noise to the location
+            loc = mean + tf.random_normal(
+                (tf.shape(input)[0], self.loc_dim), stddev=self.loc_std)
+            loc = tf.clip_by_value(loc, -1., 1.)
+        else:
+            loc = mean
+        #No backprop from location network
+        loc = tf.stop_gradient(loc)
+        return loc, mean
 
-  @property
-  def sampling(self):
-    return self._sampling
+    @property
+    def sampling(self):
+        return self._sampling
 
-  @sampling.setter
-  def sampling(self, sampling):
-    self._sampling = sampling
+    @sampling.setter
+    def sampling(self, sampling):
+        self._sampling = sampling
