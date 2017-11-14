@@ -10,68 +10,77 @@ import pdb
 
 
 class GlimpseNet(object):
-  """Glimpse network.
+    """Glimpse network.
 
-  Take glimpse location input and output features for RNN.
+    Take glimpse location input and output features for RNN.
 
-  """
+    """
 
-  def __init__(self, config, images_ph):
-      #Only allow square images for now
-      assert(self.original_size[0] == self.original_size[1])
-      self.original_size = config.original_size
-      self.num_channels = config.num_channels
-      self.sensor_size = config.sensor_size
-      self.win_size = config.win_size
-      #self.minRadius = config.minRadius
-      #self.depth = config.depth
+    def __init__(self, config, images_ph):
+        #Only allow square images for now
+        self.original_size = config.original_size
+        assert(self.original_size[0] == self.original_size[1])
+        self.glimpse_scales = config.glimpse_scales
+        self.sensor_size = config.sensor_size
+        self.win_size = config.win_size
+        #self.minRadius = config.minRadius
+        #self.depth = config.depth
 
-      self.hg_size = config.hg_size
-      self.hl_size = config.hl_size
-      self.g_size = config.g_size
-      self.loc_dim = config.loc_dim
+        self.hg_size = config.hg_size
+        self.hl_size = config.hl_size
+        self.g_size = config.g_size
+        self.loc_dim = config.loc_dim
 
-      self.images_ph = images_ph
+        self.images_ph = images_ph
 
-      self.init_weights()
+        self.init_weights()
 
-  def init_weights(self):
-      """ Initialize all the trainable weights."""
-      self.w_g0 = weight_variable((self.sensor_size, self.hg_size))
-      self.b_g0 = bias_variable((self.hg_size,))
-      self.w_l0 = weight_variable((self.loc_dim, self.hl_size))
-      self.b_l0 = bias_variable((self.hl_size,))
-      self.w_g1 = weight_variable((self.hg_size, self.g_size))
-      self.b_g1 = bias_variable((self.g_size,))
-      self.w_l1 = weight_variable((self.hl_size, self.g_size))
-      self.b_l1 = weight_variable((self.g_size,))
+    def init_weights(self):
+        """ Initialize all the trainable weights."""
+        self.w_g0 = weight_variable((self.sensor_size, self.hg_size))
+        self.b_g0 = bias_variable((self.hg_size,))
+        self.w_l0 = weight_variable((self.loc_dim, self.hl_size))
+        self.b_l0 = bias_variable((self.hl_size,))
+        self.w_g1 = weight_variable((self.hg_size, self.g_size))
+        self.b_g1 = bias_variable((self.g_size,))
+        self.w_l1 = weight_variable((self.hl_size, self.g_size))
+        self.b_l1 = weight_variable((self.g_size,))
 
-  def get_glimpse(self, loc):
-      """Take glimpse on the original images."""
-      imgs = tf.reshape(self.images_ph, [
-          tf.shape(self.images_ph)[0], self.original_size[0], self.original_size[1],
-          self.original_size[2]
-      ])
-      glimpse_imgs = tf.image.extract_glimpse(imgs,
-                                              [self.win_size, self.win_size], loc)
-      glimpse_imgs = tf.reshape(glimpse_imgs, [
-          tf.shape(loc)[0], self.win_size * self.win_size * self.num_channels
-      ])
-      return glimpse_imgs
+    def get_glimpse(self, loc):
+        """Take glimpse on the original images."""
+        imgs = tf.reshape(self.images_ph, [
+            tf.shape(self.images_ph)[0], self.original_size[0], self.original_size[1],
+            self.original_size[2]
+        ])
+        glimpse_imgs = []
+        for i in range(self.glimpse_scales):
+            if(i > 0):
+                #Scale image down
+                imgs = tf.image.resize_images(imgs, [self.original_size[0]//(2*i), self.original_size[1]//(2*i)])
 
-  def __call__(self, loc):
-      glimpse_input = self.get_glimpse(loc)
-      glimpse_input = tf.reshape(glimpse_input,
-                                 (tf.shape(loc)[0], self.sensor_size))
-      #G pipeline, which encodes glimpse
-      g = tf.nn.relu(tf.nn.xw_plus_b(glimpse_input, self.w_g0, self.b_g0))
-      g = tf.nn.xw_plus_b(g, self.w_g1, self.b_g1)
-      #L pipeline, which encode locations
-      l = tf.nn.relu(tf.nn.xw_plus_b(loc, self.w_l0, self.b_l0))
-      l = tf.nn.xw_plus_b(l, self.w_l1, self.b_l1)
-      #Combine
-      g = tf.nn.relu(g + l)
-      return g
+            #Extract glimpses at various sizes
+            single_glimpse = tf.image.extract_glimpse(imgs,
+                                                    [self.win_size, self.win_size], loc)
+            glimpse_imgs.append(tf.reshape(single_glimpse, [
+                tf.shape(loc)[0], self.win_size * self.win_size * self.original_size[2]
+            ]))
+
+        #Concatenate glimpse imgs
+        return tf.concat(glimpse_imgs, axis=1)
+
+    def __call__(self, loc):
+        glimpse_input = self.get_glimpse(loc)
+        glimpse_input = tf.reshape(glimpse_input,
+                                   (tf.shape(loc)[0], self.sensor_size))
+        #G pipeline, which encodes glimpse
+        g = tf.nn.relu(tf.nn.xw_plus_b(glimpse_input, self.w_g0, self.b_g0))
+        g = tf.nn.xw_plus_b(g, self.w_g1, self.b_g1)
+        #L pipeline, which encode locations
+        l = tf.nn.relu(tf.nn.xw_plus_b(loc, self.w_l0, self.b_l0))
+        l = tf.nn.xw_plus_b(l, self.w_l1, self.b_l1)
+        #Combine
+        g = tf.nn.relu(g + l)
+        return g
 
 
 class LocNet(object):

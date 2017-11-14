@@ -28,7 +28,7 @@ class mnistObj(object):
         self.test_images = self.mnist.test.images
         self.test_labels = self.mnist.test.labels
         if(self.translateSize is not None):
-            inputShape = (translateSize[0], translateSize[1], 1)
+            self.inputShape = (translateSize[0], translateSize[1], 1)
             #If translated, do test data at first here
             images = self.mnist.test.images
             self.test_images = self.translate(self.test_images)
@@ -50,7 +50,7 @@ class mnistObj(object):
             xPos = random.randint(0, self.translateSize[1] - self.raw_image_shape[1])
             out_images[i, yPos:yPos+self.raw_image_shape[0], xPos:xPos+self.raw_image_shape[1], :] = r_images[i]
 
-        return out_images
+        return np.reshape(out_images, [numExamples, -1])
 
     #Gets numExample images and stores it into an outer dimension.
     #This is what TF object calls to get images for training
@@ -61,7 +61,7 @@ class mnistObj(object):
         return (images, labels)
 
     def getTestData(self):
-        return(self.test_images, self.test_labels)
+        return (self.test_images, self.test_labels)
 
     def getValData(self):
         images = self.mnist.validation.images

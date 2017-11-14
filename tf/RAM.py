@@ -23,7 +23,7 @@ class RAM(base):
         return gl_next
 
     def buildModel(self):
-        inputShape = (self.params.original_size, self.params.original_size, self.params.num_channels)
+        inputShape = self.params.original_size
         #Running on GPU
         with tf.device(self.params.device):
             with tf.name_scope("Input"):
