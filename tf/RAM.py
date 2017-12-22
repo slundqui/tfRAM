@@ -16,7 +16,7 @@ class RAM(base):
     def get_next_input(self, output, i):
         #Output is the output of the previous step in LSTM
         #i.e., hidden state h
-        loc, loc_mean = self.loc_net(output)
+        loc, loc_mean = self.loc_net(output, self.eval_ph)
         gl_next = self.gl(loc)
         self.loc_mean_arr.append(loc_mean)
         self.sampled_loc_arr.append(loc)
@@ -43,6 +43,7 @@ class RAM(base):
                         name="labels")
                 self.varDict['labels'] = self.labels
 
+                self.eval_ph = tf.placeholder(tf.bool, shape=(), name="eval_ph")
 
             #Build aux nets
             # Build the aux nets.
@@ -55,6 +56,8 @@ class RAM(base):
             N = tf.shape(self.images)[0]
             #Initial glimpse location
             init_loc = tf.random_uniform((N, 2), minval=-1, maxval=1)
+            #init_loc = tf.zeros((N, 2))
+
             init_glimpse = self.gl(init_loc)
 
             #Build core network
@@ -143,13 +146,12 @@ class RAM(base):
                 global_step = tf.get_variable(
                     'global_step', [], initializer=tf.constant_initializer(0), trainable=False)
                 training_steps_per_epoch = self.params.num_train_examples // self.params.batch_size
-                starter_learning_rate = self.params.lr_start
                 # decay per training epoch
                 learning_rate = tf.train.exponential_decay(
-                    starter_learning_rate,
+                    self.params.lr_start,
                     global_step,
                     training_steps_per_epoch,
-                    0.97,
+                    self.params.lr_decay,
                     staircase=True)
                 learning_rate = tf.maximum(learning_rate, self.params.lr_min)
                 opt = tf.train.AdamOptimizer(learning_rate)
@@ -163,7 +165,7 @@ class RAM(base):
         images = np.tile(images, [self.params.M, 1])
         labels = np.tile(labels, [self.params.M])
         #Build feeddict
-        feed_dict = {self.images: images, self.labels: labels}
+        feed_dict = {self.images: images, self.labels: labels, self.eval_ph:False}
         #Write flag
         #TODO see if you can put this into base
         if(step%self.params.write_step == 0):
@@ -183,7 +185,7 @@ class RAM(base):
         #TODO remove this
         assert(numExamples % self.params.eval_batch_size == 0)
         steps_per_epoch = numExamples // self.params.eval_batch_size
-        correct_count = 0
+        correct_count = 0.0
         idx = 0
         for test_step in range(steps_per_epoch):
             images = allImages[idx:idx+self.params.eval_batch_size]
@@ -191,7 +193,6 @@ class RAM(base):
             #Write summary on first step only
             correct_count += self.evalModel(images, labels)
             idx += self.params.eval_batch_size
-
         accuracy = float(correct_count) / numExamples
         #Eval with last set of images and labels, with the final accuracy
         self.evalModelSummary(images, labels, accuracy)
@@ -200,23 +201,32 @@ class RAM(base):
         # Duplicate M times
         images = np.tile(images, [self.params.M, 1])
         labels = np.tile(labels, [self.params.M])
+
         feed_dict = {self.images: images, self.labels: labels,
-                     self.injectBool: True, self.injectAcc:injectAcc}
+                     self.injectBool: True, self.injectAcc:injectAcc,
+                     #self.eval_ph: True}
+                     self.eval_ph: False}
         self.writeTestSummary(feed_dict)
 
     def evalModel(self, images, labels):
-        labels_bak = labels
+        #labels_bak = labels
         # Duplicate M times
+        # This repeats each experiment 10 times with random conditions
         images = np.tile(images, [self.params.M, 1])
         labels = np.tile(labels, [self.params.M])
-        feed_dict = {self.images: images, self.labels: labels}
+        #feed_dict = {self.images: images, self.labels: labels, self.eval_ph: True}
+        feed_dict = {self.images: images, self.labels: labels, self.eval_ph: False}
+
         softmax_val = self.sess.run(self.softmax, feed_dict=feed_dict)
+
         #Find average of duplications
-        softmax_val = np.reshape(softmax_val, [self.params.M, -1, self.params.num_classes])
-        softmax_val = np.mean(softmax_val, 0)
+        #This is averaging across noisy locations
+        #softmax_val = np.reshape(softmax_val, [self.params.M, -1, self.params.num_classes])
+        #softmax_val = np.mean(softmax_val, 0)
         #Find label value
+
         pred_labels = np.argmax(softmax_val, 1).flatten()
-        correct_count = np.sum(pred_labels == labels_bak)
+        correct_count = float(np.sum(pred_labels == labels))/self.params.M
         return correct_count
 
 

@@ -11,7 +11,7 @@ from tf.RAM import RAM
 #TODO turning off shuffle results in the same image everytime
 #TODO images getting scaled improperly on top
 path = "/home/slundquist/mountData/datasets/mnist"
-dataObj = mnistObj(path)
+dataObj = mnistObj(path, translateSize=(60, 60), clutterImg=True, numClutterRange=(3, 6))
 
 device = '/gpu:0'
 
@@ -20,7 +20,7 @@ class Params(object):
     #Base output directory
     out_dir            = "/home/slundquist/mountData/ram/"
     #Inner run directory
-    run_dir            = out_dir + "/mono_ram/"
+    run_dir            = out_dir + "/mono_ram_clutter/"
     tf_dir             = run_dir + "/tfout"
     #Save parameters
     ckpt_dir           = run_dir + "/checkpoints/"
@@ -36,7 +36,7 @@ class Params(object):
     write_step         = 300
     #Flag for loading weights from checkpoint
     load               = False
-    load_file          = ""
+    load_file          = "/home/slundquist/mountData/ram/mono_ram_translate/checkpoints/save-model-290000"
     #Device to run on
     device             = device
 
@@ -44,12 +44,12 @@ class Params(object):
     num_train_examples = dataObj.num_train_examples
 
     #RAM params
-    win_size           = 8       #The size of each glimpse in pixels in both x and y dimension
+    win_size           = 12      #The size of each glimpse in pixels in both x and y dimension
     batch_size         = 32      #Batch size of training
     eval_batch_size    = 50      #Batch size of testing
     loc_std            = 0.22    #Standard deviation of random noise added to locations
     original_size      = dataObj.inputShape #Size of the input image in (y, x, f)
-    glimpse_scales     = 1       #Number of channels in input image
+    glimpse_scales     = 3       #Number of scales of glimpses to use
     sensor_size        = win_size**2 * glimpse_scales #Total size of input glimpse
     hg_size            = 128     #Number of features in first layer for glimpse encode
     hl_size            = 128     #Number of features in first layer for location encode
@@ -63,13 +63,12 @@ class Params(object):
     num_steps          = 500001  #Number of total steps
     lr_start           = 1e-3    #Starting learning rate for lr decay
     lr_min             = 1e-4    #Minimum learning rate for lr decay
-    lr_decay           = .99     #Learning rate decay multiplier
 
     # Monte Carlo sampling
     M                  = 10
 
 params = Params()
-#dataObj = mtWrapper(dataObj, params.batch_size)
+dataObj = mtWrapper(dataObj, params.batch_size)
 
 
 #Allocate tensorflow object

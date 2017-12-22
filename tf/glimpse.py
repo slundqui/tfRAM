@@ -94,7 +94,6 @@ class LocNet(object):
         self.loc_dim = config.loc_dim
         self.input_dim = config.cell_size
         self.loc_std = config.loc_std
-        self._sampling = True
 
         self.init_weights()
 
@@ -102,25 +101,23 @@ class LocNet(object):
         self.w = weight_variable((self.input_dim, self.loc_dim))
         self.b = bias_variable((self.loc_dim,))
 
-    def __call__(self, input):
+    def __call__(self, input, eval_ph):
         mean = tf.clip_by_value(tf.nn.xw_plus_b(input, self.w, self.b), -1., 1.)
         #Stops gradient propogation
         mean = tf.stop_gradient(mean)
-        if self._sampling:
-            #Adds random noise to the location
-            loc = mean + tf.random_normal(
-                (tf.shape(input)[0], self.loc_dim), stddev=self.loc_std)
-            loc = tf.clip_by_value(loc, -1., 1.)
-        else:
-            loc = mean
+
+        #Adds random noise to the location for training
+        train_loc = mean + tf.random_normal(
+            (tf.shape(input)[0], self.loc_dim), stddev=self.loc_std)
+        train_loc = tf.clip_by_value(train_loc, -1., 1.)
+
+        #Set output location with no noise
+        eval_loc = mean
+
+        #Select train or eval based on eval_ph
+        loc = tf.where(eval_ph, eval_loc, train_loc)
+
         #No backprop from location network
         loc = tf.stop_gradient(loc)
         return loc, mean
 
-    @property
-    def sampling(self):
-        return self._sampling
-
-    @sampling.setter
-    def sampling(self, sampling):
-        self._sampling = sampling

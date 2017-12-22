@@ -11,7 +11,6 @@ from tf.utils import createImageBuf, normImage
 class base(object):
     #Global timestep
     timestep = 0
-    plotTimestep = 0
 
     #For storing model tensors
     imageDict = {}
@@ -91,7 +90,6 @@ class base(object):
                 #Evaluate test frame, providing gt so that it writes to summary
                 self.evalModelBatch(trainDataObj)
                 print("Done test eval")
-            #Plot flag
             if(i%self.params.save_period == 0):
                 #Save meta graph if beginning of run
                 if(i == 0):
@@ -110,7 +108,7 @@ class base(object):
 
             self.timestep+=1
 
-    def plotImage(self, step):
+    def plot(self, step):
         #Subclass must overwrite this
         assert(False)
 
