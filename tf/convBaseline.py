@@ -32,19 +32,20 @@ class convBaseline(base):
             #Build core network
             with tf.variable_scope('conv_net'):
                 w_conv1 = weight_variable((self.params.win_size, self.params.win_size, inputShape[2], self.params.num_filters))
-                b_conv1 = bias_variable((self.params.num_filters))
+                b_conv1 = bias_variable((self.params.num_filters,))
                 conv1 = tf.nn.relu(tf.nn.conv2d(
                             input=reshape_images,
                             filter = w_conv1,
-                            strides = [1, self.params.stride, self.params.stride, 1],
+                            strides = [1, self.params.conv_stride, self.params.conv_stride, 1],
                             padding= "SAME") + b_conv1)
 
-                [numSamples, ny, nx, nf] = tf.shape(conv1)
-                reshape_conv1 = tf.reshape(conv1, [self.numSamples, ny*nx*nf])
+                (numSamples, ny, nx, nf) = conv1.shape
+                numFeatures = int(ny) * int(nx) * int(nf)
+                reshape_conv1 = tf.reshape(conv1, [-1, numFeatures])
 
-                w_fc = weight_variable((ny*nx*nf, self.params.num_fc_units))
-                b_fc = bias_variable((self.params.num_fc_units))
-                fc = tf.nn.relu(tf.matmul(reshape_conv1, w_vc) + b_fc)
+                w_fc = weight_variable((numFeatures, self.params.num_fc_units))
+                b_fc = bias_variable((self.params.num_fc_units,))
+                fc = tf.nn.relu(tf.matmul(reshape_conv1, w_fc) + b_fc)
 
             #Classification network
             with tf.variable_scope('classification_net'):
@@ -63,6 +64,7 @@ class convBaseline(base):
 
                 #hybrid loss
                 loss = xent
+                var_list = tf.trainable_variables()
                 grads = tf.gradients(loss, var_list)
                 grads, _ = tf.clip_by_global_norm(grads, self.params.max_grad_norm)
 
@@ -102,7 +104,7 @@ class convBaseline(base):
     def trainStep(self, step, dataObj):
         (images, labels) = dataObj.getData(self.params.batch_size)
         #Build feeddict
-        feed_dict = {self.images: images, self.labels: labels, self.eval_ph:False}
+        feed_dict = {self.images: images, self.labels: labels}
         #Write flag
         #TODO see if you can put this into base
         if(step%self.params.write_step == 0):
@@ -135,24 +137,12 @@ class convBaseline(base):
         self.evalModelSummary(images, labels, accuracy)
 
     def evalModelSummary(self, images, labels, injectAcc):
-        # Duplicate M times
-        images = np.tile(images, [self.params.M, 1])
-        labels = np.tile(labels, [self.params.M])
-
         feed_dict = {self.images: images, self.labels: labels,
-                     self.injectBool: True, self.injectAcc:injectAcc,
-                     #self.eval_ph: True}
-                     self.eval_ph: False}
+                     self.injectBool: True, self.injectAcc:injectAcc}
         self.writeTestSummary(feed_dict)
 
     def evalModel(self, images, labels):
-        #labels_bak = labels
-        # Duplicate M times
-        # This repeats each experiment 10 times with random conditions
-        images = np.tile(images, [self.params.M, 1])
-        labels = np.tile(labels, [self.params.M])
-        #feed_dict = {self.images: images, self.labels: labels, self.eval_ph: True}
-        feed_dict = {self.images: images, self.labels: labels, self.eval_ph: False}
+        feed_dict = {self.images: images, self.labels: labels}
 
         softmax_val = self.sess.run(self.softmax, feed_dict=feed_dict)
 
