@@ -5,7 +5,7 @@ from dataObj.mnist import mnistObj
 from dataObj.multithread import mtWrapper
 import numpy as np
 import pdb
-from tf.convBaseline import convBaseline
+from tf.fcBaseline import fcBaseline
 
 #Get object from which tensorflow will pull data from
 #TODO turning off shuffle results in the same image everytime
@@ -20,7 +20,7 @@ class Params(object):
     #Base output directory
     out_dir            = "/home/slundquist/mountData/ram/"
     #Inner run directory
-    run_dir            = out_dir + "/mono_conv/"
+    run_dir            = out_dir + "/mono_fc/"
     tf_dir             = run_dir + "/tfout"
     #Save parameters
     ckpt_dir           = run_dir + "/checkpoints/"
@@ -49,9 +49,8 @@ class Params(object):
     eval_batch_size    = 50      #Batch size of testing
     original_size      = dataObj.inputShape #Size of the input image in (y, x, f)
 
-    num_filters        = 8       #number of conv filters
-    conv_stride        = 5       #stride of conv layer
-    num_fc_units       = 256     #number of fc units
+    num_fc1_units      = 256     #Number of units in first fc layer
+    num_fc2_units      = 256     #Number of units in second fc layer
     num_classes        = 10      #Number of output classes
     max_grad_norm      = 5.      #Clipping norm for gradient clipping
 
@@ -66,7 +65,7 @@ params = Params()
 
 #Allocate tensorflow object
 #This will build the graph
-tfObj = convBaseline(params)
+tfObj = fcBaseline(params)
 
 print("Done init")
 tfObj.trainModel(dataObj)
