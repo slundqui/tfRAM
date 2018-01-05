@@ -236,7 +236,35 @@ class base(object):
     def evalModel(self, images, labels):
         assert(False)
 
-    def evalBatchModel(self, dataObj):
+    def evalModelBatch(self, dataObj, writeOut = False):
+        #Do validation
+        (all_images, all_labels) = dataObj.getTestData()
+        accuracy = self.evalSet(all_images, all_labels)
+        if(writeOut):
+            with open(params.run_dir + "accuracy.txt", "w") as f:
+                f.write(accuracy)
+        return accuracy
+
+    def evalSet(self, allImages, allLabels):
+        (numExamples, _) = allImages.shape
+        assert(numExamples == allLabels.shape[0])
+        #TODO remove this
+        assert(numExamples % self.params.eval_batch_size == 0)
+        steps_per_epoch = numExamples // self.params.eval_batch_size
+        correct_count = 0.0
+        idx = 0
+        for test_step in range(steps_per_epoch):
+            images = allImages[idx:idx+self.params.eval_batch_size]
+            labels = allLabels[idx:idx+self.params.eval_batch_size]
+            #Write summary on first step only
+            correct_count += self.evalModel(images, labels)
+            idx += self.params.eval_batch_size
+        accuracy = float(correct_count) / numExamples
+        #Eval with last set of images and labels, with the final accuracy
+        self.evalModelSummary(images, labels, accuracy)
+        return accuracy
+
+    def evalModelSummary(self, images, labels, injectAcc):
         assert(False)
 
     #Loads a tf checkpoint

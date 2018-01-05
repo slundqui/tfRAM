@@ -104,30 +104,6 @@ class fcBaseline(base):
         #Run optimizers
         self.sess.run(self.train_op, feed_dict = feed_dict)
 
-    def evalModelBatch(self, dataObj):
-        #Do validation
-        (all_images, all_labels) = dataObj.getTestData()
-        self.evalSet(all_images, all_labels)
-        #TODO also run val data
-
-    def evalSet(self, allImages, allLabels):
-        (numExamples, _) = allImages.shape
-        assert(numExamples == allLabels.shape[0])
-        #TODO remove this
-        assert(numExamples % self.params.eval_batch_size == 0)
-        steps_per_epoch = numExamples // self.params.eval_batch_size
-        correct_count = 0
-        idx = 0
-        for test_step in range(steps_per_epoch):
-            images = allImages[idx:idx+self.params.eval_batch_size]
-            labels = allLabels[idx:idx+self.params.eval_batch_size]
-            #Write summary on first step only
-            correct_count += self.evalModel(images, labels)
-            idx += self.params.eval_batch_size
-        accuracy = float(correct_count) / numExamples
-        #Eval with last set of images and labels, with the final accuracy
-        self.evalModelSummary(images, labels, accuracy)
-
     def evalModelSummary(self, images, labels, injectAcc):
         feed_dict = {self.images: images, self.labels: labels,
                      self.injectBool: True, self.injectAcc:injectAcc}
