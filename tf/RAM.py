@@ -9,9 +9,13 @@ from tf.utils import weight_variable, bias_variable, loglikelihood
 
 #Spatial transform network
 class RAM(base):
-    #Keeps track of locations
-    loc_mean_arr = []
-    sampled_loc_arr = []
+
+    def __init__(self, params):
+        #Keeps track of locations
+        self.loc_mean_arr = []
+        self.sampled_loc_arr = []
+        super(RAM, self).__init__(params)
+
 
     def get_next_input(self, output, i):
         #Output is the output of the previous step in LSTM
@@ -204,9 +208,4 @@ class RAM(base):
         pred_labels = np.argmax(softmax_val, 1).flatten()
         correct_count = float(np.sum(pred_labels == labels))/self.params.M
         return correct_count
-
-
-
-
-
 

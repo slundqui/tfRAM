@@ -9,17 +9,20 @@ import time
 from tf.utils import createImageBuf, normImage
 
 class base(object):
-    #Global timestep
-    timestep = 0
-
-    #For storing model tensors
-    imageDict = {}
-    scalarDict = {}
-    varDict = {}
-
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
     def __init__(self, params):
+        #Global timestep
+        self.timestep = 0
+        #For storing model tensors
+        self.imageDict = {}
+        self.scalarDict = {}
+        self.varDict = {}
+
         self.params = params
+        self.tf_dir = self.params.run_dir + "/tfout"
+        self.ckpt_dir = self.params.run_dir + "/checkpoints/"
+        self.save_file = self.ckpt_dir + "/save-model"
+        self.plot_dir = self.params.run_dir + "plots/"
         self.makeDirs()
         #TODO
         #self.printParamsStr(params)
@@ -78,10 +81,10 @@ class base(object):
     def makeDirs(self):
         if not os.path.exists(self.params.run_dir):
             os.makedirs(self.params.run_dir)
-        if not os.path.exists(self.params.plot_dir):
-            os.makedirs(self.params.plot_dir)
-        if not os.path.exists(self.params.ckpt_dir):
-            os.makedirs(self.params.ckpt_dir)
+        if not os.path.exists(self.plot_dir):
+            os.makedirs(self.plot_dir)
+        if not os.path.exists(self.ckpt_dir):
+            os.makedirs(self.ckpt_dir)
 
     def trainModel(self, trainDataObj):
         progress_time = time.time()
@@ -96,7 +99,7 @@ class base(object):
                     write_meta_graph = True
                 else:
                     write_meta_graph = False
-                save_path = self.saver.save(self.sess, self.params.save_file, global_step=self.timestep, write_meta_graph=write_meta_graph)
+                save_path = self.saver.save(self.sess, self.save_file, global_step=self.timestep, write_meta_graph=write_meta_graph)
                 print("Model saved in file: %s" % save_path)
             #Progress print
             if(i%self.params.progress == 0):
@@ -226,8 +229,8 @@ class base(object):
     #Allocates and specifies the output directory for tensorboard summaries
     def writeSummary(self):
         self.mergedSummary = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter(self.params.tf_dir + "/train", self.sess.graph)
-        self.test_writer = tf.summary.FileWriter(self.params.tf_dir + "/test")
+        self.train_writer = tf.summary.FileWriter(self.tf_dir + "/train", self.sess.graph)
+        self.test_writer = tf.summary.FileWriter(self.tf_dir + "/test")
 
     def closeSess(self):
         self.sess.close()
@@ -241,8 +244,8 @@ class base(object):
         (all_images, all_labels) = dataObj.getTestData()
         accuracy = self.evalSet(all_images, all_labels)
         if(writeOut):
-            with open(params.run_dir + "accuracy.txt", "w") as f:
-                f.write(accuracy)
+            with open(self.params.run_dir + "accuracy.txt", "w") as f:
+                f.write(str(accuracy))
         return accuracy
 
     def evalSet(self, allImages, allLabels):

@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import pdb
 
-distributions = tf.contrib.distributions
 
 
 def weight_variable(shape):
@@ -15,6 +14,7 @@ def bias_variable(shape):
 
 
 def loglikelihood(mean_arr, sampled_arr, sigma):
+    distributions = tf.contrib.distributions
     mu = tf.stack(mean_arr)  # mu = [timesteps, batch_sz, loc_dim]
     sampled = tf.stack(sampled_arr)  # same shape as mu
     gaussian = distributions.Normal(mu, sigma)

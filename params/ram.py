@@ -6,13 +6,10 @@ class RamParams(object):
     out_dir            = "/home/slundquist/mountData/ram/"
     #Inner run directory
     run_dir            = out_dir + "/mono_ram/"
-    tf_dir             = run_dir + "/tfout"
+
     #Save parameters
-    ckpt_dir           = run_dir + "/checkpoints/"
-    save_file          = ckpt_dir + "/save-model"
     save_period        = 50000
     #output plots directory
-    plot_dir           = run_dir + "plots/"
     plot_period        = 1718
     eval_period        = 1718 # 1 epoch
     #Progress step
