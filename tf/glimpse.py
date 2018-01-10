@@ -53,6 +53,7 @@ class GlimpseNet(object):
             self.original_size[2]
         ])
         glimpse_imgs = []
+        #TODO explicitly test this
         for i in range(self.glimpse_scales):
             if(i > 0):
                 #Scale image down

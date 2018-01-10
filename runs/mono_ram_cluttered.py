@@ -1,82 +1,79 @@
 #import matplotlib
 #matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 from dataObj.mnist import mnistObj
 from dataObj.multithread import mtWrapper
 import numpy as np
 import pdb
-from tf.RAM import RAM
 
 #Get object from which tensorflow will pull data from
-#TODO turning off shuffle results in the same image everytime
-#TODO images getting scaled improperly on top
+#TODO cross validation
 path = "/home/slundquist/mountData/datasets/mnist"
 dataObj = mnistObj(path, translateSize=(60, 60), clutterImg=True, numClutterRange=(3, 6))
 
-device = '/gpu:0'
+#Load default params
+from params.ram import RamParams
+params = RamParams()
 
-class Params(object):
-    ##Bookkeeping params
-    #Base output directory
-    out_dir            = "/home/slundquist/mountData/ram/"
-    #Inner run directory
-    run_dir            = out_dir + "/mono_ram_clutter/"
-    tf_dir             = run_dir + "/tfout"
-    #Save parameters
-    ckpt_dir           = run_dir + "/checkpoints/"
-    save_file          = ckpt_dir + "/save-model"
-    save_period        = 50000
-    #output plots directory
-    plot_dir           = run_dir + "plots/"
-    plot_period        = 1718
-    eval_period        = 1718 # 1 epoch
-    #Progress step
-    progress           = 100
-    #Controls how often to write out to tensorboard
-    write_step         = 300
-    #Flag for loading weights from checkpoint
-    load               = False
-    load_file          = "/home/slundquist/mountData/ram/mono_ram_translate/checkpoints/save-model-290000"
-    #Device to run on
-    device             = device
+#Overwrite various params
+params.device = '/gpu:0'
+params.original_size = dataObj.inputShape
+params.num_train_examples = dataObj.num_train_examples
 
-    #data params
-    num_train_examples = dataObj.num_train_examples
+params.win_size = 12
+params.glimpse_scales = 3
+params.sensor_size = params.win_size**2 * params.glimpse_scales
 
-    #RAM params
-    win_size           = 12      #The size of each glimpse in pixels in both x and y dimension
-    batch_size         = 32      #Batch size of training
-    eval_batch_size    = 50      #Batch size of testing
-    loc_std            = 0.22    #Standard deviation of random noise added to locations
-    original_size      = dataObj.inputShape #Size of the input image in (y, x, f)
-    glimpse_scales     = 3       #Number of scales of glimpses to use
-    sensor_size        = win_size**2 * glimpse_scales #Total size of input glimpse
-    hg_size            = 128     #Number of features in first layer for glimpse encode
-    hl_size            = 128     #Number of features in first layer for location encode
-    g_size             = 256     #Number of features in second layer (combine g and l)
-    loc_dim            = 2       #Number of dimensions used in the location output
-    cell_size          = 256     #Size of hidden latent space in LSTM
-    num_glimpses       = 6       #Number of total glimpses
-    num_classes        = 10      #Number of output classes
-    max_grad_norm      = 5.      #Clipping norm for gradient clipping
+#dataObj = mtWrapper(dataObj, params.batch_size)
 
-    num_steps          = 500001  #Number of total steps
-    lr_start           = 1e-3    #Starting learning rate for lr decay
-    lr_min             = 1e-4    #Minimum learning rate for lr decay
+from tf.RAM import RAM
+for nglimpse in range(2, 8):
+    params.run_dir = params.out_dir + "/mono_ram_cluttered_nglimpse_" + str(nglimpse) + "/"
+    params.num_glimpses = nglimpse
 
-    # Monte Carlo sampling
-    M                  = 10
+    #Allocate tensorflow object
+    #This will build the graph
+    tfObj = RAM(params)
+    print("Done init")
 
-params = Params()
-dataObj = mtWrapper(dataObj, params.batch_size)
+    tfObj.trainModel(dataObj)
+    tfObj.evalModelBatch(dataObj, writeOut=True)
+    print("Done run")
+    tfObj.closeSess()
 
+#Conv control
+from params.conv import ConvParams
+params = ConvParams()
+#Overwrite various params
+params.device = '/gpu:0'
+params.original_size = dataObj.inputShape
+params.num_train_examples = dataObj.num_train_examples
+params.run_dir = params.out_dir + "/mono_conv_cluttered/"
 
-#Allocate tensorflow object
-#This will build the graph
-tfObj = RAM(params)
-
-print("Done init")
+from tf.convBaseline import convBaseline
+tfObj = convBaseline(params)
 tfObj.trainModel(dataObj)
+tfObj.evalModelBatch(dataObj, writeOut=True)
 print("Done run")
-
 tfObj.closeSess()
+
+#FC control
+from params.fc import FcParams
+params = FcParams()
+#Overwrite various params
+params.device = '/gpu:0'
+params.original_size = dataObj.inputShape
+params.num_train_examples = dataObj.num_train_examples
+
+from tf.fcBaseline import fcBaseline
+for hidden_units in [64, 256]:
+    params.num_fc1_units = hidden_units
+    params.num_fc2_units = hidden_units
+    params.run_dir = params.out_dir + "/mono_fc_cluttered_" + str(hidden_units) + "/"
+    tfObj = fcBaseline(params)
+    tfObj.trainModel(dataObj)
+    tfObj.evalModelBatch(dataObj, writeOut=True)
+    print("Done run")
+    tfObj.closeSess()
+
+
+
