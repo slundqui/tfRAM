@@ -22,11 +22,13 @@ params.num_train_examples = dataObj.num_train_examples
 params.win_size = 12
 params.glimpse_scales = 3
 params.sensor_size = params.win_size**2 * params.glimpse_scales
+params.num_steps = 800001
+params.lr_decay = .995
 
 #dataObj = mtWrapper(dataObj, params.batch_size)
 
 from tf.RAM import RAM
-for nglimpse in range(2, 8):
+for nglimpse in [4, 6, 8]:
     params.run_dir = params.out_dir + "/mono_ram_cluttered_nglimpse_" + str(nglimpse) + "/"
     params.num_glimpses = nglimpse
 
@@ -48,6 +50,8 @@ params.device = '/gpu:0'
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 params.run_dir = params.out_dir + "/mono_conv_cluttered/"
+params.num_steps = 800001
+params.lr_decay = .995
 
 from tf.convBaseline import convBaseline
 tfObj = convBaseline(params)
@@ -63,6 +67,8 @@ params = FcParams()
 params.device = '/gpu:0'
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
+params.num_steps = 800001
+params.lr_decay = .995
 
 from tf.fcBaseline import fcBaseline
 for hidden_units in [64, 256]:
