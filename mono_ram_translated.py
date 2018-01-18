@@ -7,17 +7,19 @@ import pdb
 
 batch_size = 32
 device = "/gpu:0"
+mt = False
 
 #Get object from which tensorflow will pull data from
 #TODO cross validation
 path = "/home/slundquist/mountData/datasets/mnist"
 
-##Make new class based on mnist class
-#mt_mnistData = mtWrapper(mnistData, batch_size)
-##Instantiate class
-#dataObj = mt_mnistData(path, translateSize=(60, 60))
-
-dataObj = mnistData(path, translateSize=(60, 60))
+if(mt):
+    #Make new class based on mnist class
+    mt_mnistData = mtWrapper(mnistData, batch_size)
+    #Instantiate class
+    dataObj = mt_mnistData(path, translateSize=(60, 60))
+else:
+    dataObj = mnistData(path, translateSize=(60, 60))
 
 #Load default params
 from params.ram import RamParams
