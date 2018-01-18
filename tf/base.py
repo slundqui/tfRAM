@@ -56,7 +56,7 @@ class base(object):
     def printRepoDiffStr(self):
         repolabel = subprocess.check_output(["git", "log", "-n1"])
         diffStr = subprocess.check_output(["git", "diff", "HEAD"])
-        outstr = str(repolabel) + "\n\n" + str(diffStr)
+        outstr = repolabel.decode() + "\n\n" + diffStr.decode()
 
         outfile = self.params.run_dir+"/repo.diff"
 
