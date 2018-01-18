@@ -5,6 +5,8 @@ from tf.glimpse import GlimpseNet, LocNet
 
 from tf.base import base
 from tf.utils import weight_variable, bias_variable, loglikelihood
+
+from plot.plot import plotGlimpseTrace
 #import matplotlib.pyplot as plt
 
 #Spatial transform network
@@ -134,6 +136,9 @@ class RAM(base):
                 self.scalarDict['reward'] = reward
                 self.scalarDict['loss'] = loss
 
+                self.varDict['loc_mean_arr'] = self.loc_mean_arr
+                self.varDict['sampled_loc_arr'] = self.sampled_loc_arr
+
             with tf.variable_scope('accuracy'):
                 #
                 self.injectBool = tf.placeholder_with_default(False, shape=(), name="injectBool")
@@ -184,8 +189,7 @@ class RAM(base):
 
         feed_dict = {self.images: images, self.labels: labels,
                      self.injectBool: True, self.injectAcc:injectAcc,
-                     #self.eval_ph: True}
-                     self.eval_ph: False}
+                     self.eval_ph: self.params.det_eval}
         self.writeTestSummary(feed_dict)
 
     def evalModel(self, images, labels):
@@ -194,8 +198,7 @@ class RAM(base):
         # This repeats each experiment 10 times with random conditions
         images = np.tile(images, [self.params.M, 1])
         labels = np.tile(labels, [self.params.M])
-        #feed_dict = {self.images: images, self.labels: labels, self.eval_ph: True}
-        feed_dict = {self.images: images, self.labels: labels, self.eval_ph: False}
+        feed_dict = {self.images: images, self.labels: labels, self.eval_ph: self.params.det_eval}
 
         softmax_val = self.sess.run(self.softmax, feed_dict=feed_dict)
 
@@ -209,3 +212,26 @@ class RAM(base):
         correct_count = float(np.sum(pred_labels == labels))/self.params.M
         return correct_count
 
+    def plot(self, step, dataObj):
+        self.plotGlimpse(step, dataObj)
+
+    def plotGlimpse(self, step, dataObj, numPlot=5):
+        test_imgs = dataObj.getTestData()[0][:numPlot, ...]
+        feed_dict = {self.images: test_imgs, self.eval_ph:self.params.det_eval}
+
+        #Get glimpse locations
+        (np_loc_mean_arr, np_sampled_loc_arr) = self.sess.run(
+                [self.loc_mean_arr, self.sampled_loc_arr],
+                feed_dict=feed_dict)
+
+        #[nBatch, nGlimpse, 2] where 2 is y by x coords
+        np_loc_mean_arr = np.transpose(np.array(np_loc_mean_arr), [1, 0, 2])
+        np_sampled_loc_arr = np.transpose(np.array(np_sampled_loc_arr), [1, 0, 2])
+
+        #Reshape into image
+        reshape_test_imgs = np.reshape(test_imgs, (numPlot,) + dataObj.inputShape)
+
+        outdir = self.plot_dir + "/" + str(step) + "/"
+        self.makeDir(outdir)
+
+        plotGlimpseTrace(reshape_test_imgs, np_loc_mean_arr, outdir)

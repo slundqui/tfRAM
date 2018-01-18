@@ -4,9 +4,9 @@ class FcParams(object):
     #Inner run directory
     run_dir            = out_dir + "/mono_fc/"
     #Save parameters
-    save_period        = 50000
+    save_period        = 100000
     #output plots directory
-    plot_period        = 1718
+    plot_period        = 100000
     eval_period        = 1718 # 1 epoch
     #Progress step
     progress           = 100

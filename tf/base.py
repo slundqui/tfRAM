@@ -7,6 +7,7 @@ import subprocess
 import json
 import time
 from tf.utils import createImageBuf, normImage
+import inspect
 
 class base(object):
     #Constructor takes inputShape, which is a 3 tuple (ny, nx, nf) based on the size of the image being fed in
@@ -24,9 +25,10 @@ class base(object):
         self.save_file = self.ckpt_dir + "/save-model"
         self.plot_dir = self.params.run_dir + "plots/"
         self.makeDirs()
+
         #TODO
-        #self.printParamsStr(params)
-        #self.printRepoDiffStr()
+        self.printParamsStr(params)
+        self.printRepoDiffStr()
 
         #Add node for printing params to tensorboard
         #TODO see if this can be done
@@ -54,7 +56,7 @@ class base(object):
     def printRepoDiffStr(self):
         repolabel = subprocess.check_output(["git", "log", "-n1"])
         diffStr = subprocess.check_output(["git", "diff", "HEAD"])
-        outstr = repolabel + "\n\n" + diffStr
+        outstr = str(repolabel) + "\n\n" + str(diffStr)
 
         outfile = self.params.run_dir+"/repo.diff"
 
@@ -64,9 +66,8 @@ class base(object):
         f.close()
 
     def genParamsStr(self, params):
-        pdb.set_trace()
-        #TODO
-        paramsStr = json.dumps(params, indent=2)
+        param_dict = {i:getattr(params, i) for i in dir(params) if not inspect.ismethod(i) and "__" not in i}
+        paramsStr = json.dumps(param_dict, indent=2)
         return paramsStr
 
     def printParamsStr(self, params):
@@ -77,14 +78,15 @@ class base(object):
         f.write(outstr)
         f.close()
 
+    def makeDir(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
     #Make approperiate directories if they don't exist
     def makeDirs(self):
-        if not os.path.exists(self.params.run_dir):
-            os.makedirs(self.params.run_dir)
-        if not os.path.exists(self.plot_dir):
-            os.makedirs(self.plot_dir)
-        if not os.path.exists(self.ckpt_dir):
-            os.makedirs(self.ckpt_dir)
+        self.makeDir(self.params.run_dir)
+        self.makeDir(self.plot_dir)
+        self.makeDir(self.ckpt_dir)
 
     def trainModel(self, trainDataObj):
         progress_time = time.time()
@@ -106,12 +108,14 @@ class base(object):
                 tmp_time = time.time()
                 print("Timestep ", self.timestep, ":", float(self.params.progress)/(tmp_time - progress_time), " iterations per second")
                 progress_time = tmp_time
+            if(i%self.params.plot_period == 0):
+                self.plot(i, trainDataObj)
 
             self.trainStep(i, trainDataObj)
 
             self.timestep+=1
 
-    def plot(self, step):
+    def plot(self, step, dataObj):
         #Subclass must overwrite this
         assert(False)
 
