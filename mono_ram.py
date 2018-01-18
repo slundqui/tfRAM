@@ -1,14 +1,22 @@
 #import matplotlib
 #matplotlib.use('Agg')
-from dataObj.mnist import mnistObj
-from dataObj.multithread import mtWrapper
+from data.mnist import mnistData
+from data.multithread import mtWrapper
 import numpy as np
 import pdb
+
+batch_size = 32
 
 #Get object from which tensorflow will pull data from
 #TODO cross validation
 path = "/home/slundquist/mountData/datasets/mnist"
-dataObj = mnistObj(path)
+
+##Make new class based on mnist class
+#mt_mnistData = mtWrapper(mnistData, batch_size)
+##Instantiate class
+#dataObj = mt_mnistData(path)
+
+dataObj = mnistData(path)
 
 #Load default params
 from params.ram import RamParams

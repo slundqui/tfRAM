@@ -1,18 +1,28 @@
 #import matplotlib
 #matplotlib.use('Agg')
-from dataObj.mnist import mnistObj
-from dataObj.multithread import mtWrapper
+from data.mnist import mnistData
+from data.multithread import mtWrapper
 import numpy as np
 import pdb
+
+batch_size = 32
 
 #Get object from which tensorflow will pull data from
 #TODO cross validation
 path = "/home/slundquist/mountData/datasets/mnist"
-dataObj = mnistObj(path, translateSize=(60, 60))
+
+##Make new class based on mnist class
+#mt_mnistData = mtWrapper(mnistData, batch_size)
+##Instantiate class
+#dataObj = mt_mnistData(path, translateSize=(60, 60))
+
+dataObj = mnistData(path, translateSize=(60, 60))
 
 #Load default params
 from params.ram import RamParams
 params = RamParams()
+
+params.batch_size = batch_size
 
 #Overwrite various params
 params.device = '/gpu:0'
@@ -24,10 +34,7 @@ params.glimpse_scales = 3
 params.sensor_size = params.win_size**2 * params.glimpse_scales
 params.num_steps = 2000001
 params.lr_decay = .999
-params.lr_start = 1e-3
-
-
-#dataObj = mtWrapper(dataObj, params.batch_size)
+params.lr_start = 5e-3
 
 from tf.RAM import RAM
 for nglimpse in [4, 6, 8]:

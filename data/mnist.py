@@ -13,7 +13,7 @@ import random
 """
 An object that handles data input
 """
-class mnistObj(object):
+class mnistData(object):
     raw_image_shape = (28, 28, 1)
     inputShape = raw_image_shape
     numClasses = 10
