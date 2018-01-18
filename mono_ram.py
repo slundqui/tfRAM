@@ -6,6 +6,7 @@ import numpy as np
 import pdb
 
 batch_size = 32
+device = "/gpu:1"
 
 #Get object from which tensorflow will pull data from
 #TODO cross validation
@@ -23,7 +24,7 @@ from params.ram import RamParams
 params = RamParams()
 
 #Overwrite various params
-params.device = '/gpu:0'
+params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 
@@ -50,7 +51,7 @@ for nglimpse in range(2, 8):
 from params.conv import ConvParams
 params = ConvParams()
 #Overwrite various params
-params.device = '/gpu:0'
+params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 params.run_dir = params.out_dir + "/mono_conv_base/"
@@ -66,7 +67,7 @@ tfObj.closeSess()
 from params.fc import FcParams
 params = FcParams()
 #Overwrite various params
-params.device = '/gpu:0'
+params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 params.run_dir = params.out_dir + "/mono_fc_base/"
