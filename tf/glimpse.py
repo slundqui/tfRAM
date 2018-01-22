@@ -46,6 +46,18 @@ class GlimpseNet(object):
         self.w_l1 = weight_variable((self.hl_size, self.g_size))
         self.b_l1 = weight_variable((self.g_size,))
 
+    def getVars(self):
+        outDict = {'glimpsenet_w_g0': self.w_g0,
+                   'glimpsenet_b_g0': self.b_g0,
+                   'glimpsenet_w_l0': self.w_l0,
+                   'glimpsenet_b_l0': self.b_l0,
+                   'glimpsenet_w_g1': self.w_g1,
+                   'glimpsenet_b_g1': self.b_g1,
+                   'glimpsenet_w_l1': self.w_l1,
+                   'glimpsenet_b_l1': self.b_l1}
+        return outDict
+
+
     def get_glimpse(self, loc):
         """Take glimpse on the original images."""
         imgs = tf.reshape(self.images_ph, [
@@ -101,6 +113,12 @@ class LocNet(object):
     def init_weights(self):
         self.w = weight_variable((self.input_dim, self.loc_dim))
         self.b = bias_variable((self.loc_dim,))
+
+    def getVars(self):
+        outDict = {'locnet_w': self.w,
+                   'locnet_b': self.b}
+        return outDict
+
 
     def __call__(self, input, eval_ph):
         mean = tf.clip_by_value(tf.nn.xw_plus_b(input, self.w, self.b), -1., 1.)

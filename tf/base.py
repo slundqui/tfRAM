@@ -116,8 +116,8 @@ class base(object):
             self.timestep+=1
 
     def plot(self, step, dataObj):
-        #Subclass must overwrite this
-        assert(False)
+        #Subclass should overwrite this
+        pass
 
     def trainStep(self, step, trainDataObj):
         #Subclass must overwrite this

@@ -6,7 +6,7 @@ from scipy.misc import imresize, imsave
 
 #imgs is [batch, y, x, f] and locs is [batch, numglimpse, 2] where last dim is
 #y by x locs, with center as 0, 0, normalized to -1 to 1
-def plotGlimpseTrace(imgs, locs, outdir, targetSize=[180, 180]):
+def plotGlimpseTrace(imgs, locs, outdir, targetSize=[180, 180], nameprefix=""):
     (nbatch, ny, nx, nf) = imgs.shape
     #TODO make radius a function of image shape
     radius = 3
@@ -47,5 +47,5 @@ def plotGlimpseTrace(imgs, locs, outdir, targetSize=[180, 180]):
             rr, cc, val = draw.line_aa(y_loc[i], x_loc[i], y_loc[i+1], x_loc[i+1])
             img[rr, cc, 1] = val
 
-        imsave(outdir + "/glimpse_prefix_" + str(b) + ".png", img)
+        imsave(outdir + "/glimpse_" + nameprefix + "_" + str(b) + ".png", img)
 

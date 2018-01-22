@@ -55,8 +55,13 @@ class RAM(base):
             # Build the aux nets.
             with tf.variable_scope('glimpse_net'):
                 self.gl = GlimpseNet(self.params, self.images)
+                #Add variables to varDict
+                self.varDict.update(self.gl.getVars())
+
             with tf.variable_scope('loc_net'):
                 self.loc_net = LocNet(self.params)
+                #Add variables to varDict
+                self.varDict.update(self.loc_net.getVars())
 
             # number of examples
             N = tf.shape(self.images)[0]
@@ -234,4 +239,5 @@ class RAM(base):
         outdir = self.plot_dir + "/" + str(step) + "/"
         self.makeDir(outdir)
 
-        plotGlimpseTrace(reshape_test_imgs, np_loc_mean_arr, outdir)
+        plotGlimpseTrace(reshape_test_imgs, np_loc_mean_arr, outdir, nameprefix="mean")
+        plotGlimpseTrace(reshape_test_imgs, np_sampled_loc_arr, outdir, nameprefix="sampled")

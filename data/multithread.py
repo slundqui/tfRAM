@@ -21,6 +21,7 @@ def mtWrapper(cls, input_batchSize):
             self._input_batchSize = input_batchSize
             #Start first thread
             self.loadThread = threading.Thread(target=self.__loadData__, args=(self._input_batchSize,))
+            self.loadThread.setDaemon(True)
             self.loadThread.start()
 
         #This function doesn't actually need numExample , but this api matches that of
@@ -36,6 +37,7 @@ def mtWrapper(cls, input_batchSize):
             returnBuf = self.loadBuf[:]
             #Launch new thread to load new buffer
             self.loadThread = threading.Thread(target=self.__loadData__, args=(self._input_batchSize,))
+            self.loadThread.setDaemon(True)
             self.loadThread.start()
             #Return stored buffer
             return returnBuf

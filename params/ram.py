@@ -29,7 +29,7 @@ class RamParams(object):
     win_size           = 8       #The size of each glimpse in pixels in both x and y dimension
     batch_size         = 32      #Batch size of training
     eval_batch_size    = 50      #Batch size of testing
-    loc_std            = 0.05     #Standard deviation of random noise added to locations
+    loc_std            = 0.05    #Standard deviation of random noise added to locations
     det_eval           = False   #If true, use only mean of location network for evaluation
     original_size      = None    #dataObj.inputShape #Size of the input image in (y, x, f)
     glimpse_scales     = 1       #Number of channels in input image
