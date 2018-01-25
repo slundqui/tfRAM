@@ -18,7 +18,6 @@ class RAM(base):
         self.sampled_loc_arr = []
         super(RAM, self).__init__(params)
 
-
     def get_next_input(self, output, i):
         #Output is the output of the previous step in LSTM
         #i.e., hidden state h
@@ -43,6 +42,8 @@ class RAM(base):
                 tf.summary.image('images', reshape_images)
 
                 self.varDict['images'] = self.images
+
+                #self.rescale_images = self.images *2 - 1
 
                 self.labels = tf.placeholder(tf.int64,
                         shape=[None],
@@ -129,17 +130,31 @@ class RAM(base):
                 baselines_mse = tf.reduce_mean(tf.square((rewards - baselines)))
                 var_list = tf.trainable_variables()
 
+                core_net_var = [v for v in var_list if "glimpse_net" in v.name or
+                                                               "core_net" in v.name or
+                                                               "baseline" in v.name]
+                loc_net_var = [v for v in var_list if "loc_net" in v.name]
+
+                assert(len(var_list) == len(core_net_var) + len(loc_net_var))
+
                 #hybrid loss
-                loss = -logllratio + xent + baselines_mse  # `-` for minimize
-                grads = tf.gradients(loss, var_list)
-                grads, _ = tf.clip_by_global_norm(grads, self.params.max_grad_norm)
+                #TODO baselines only update based on mse?
+                sup_loss = xent + baselines_mse # `-` for minimize
+                reinforce_loss = -logllratio
+
+                core_grads = tf.gradients(sup_loss, core_net_var)
+                core_grads, _ = tf.clip_by_global_norm(core_grads, self.params.max_grad_norm)
+
+                loc_grads = tf.gradients(reinforce_loss, loc_net_var)
+                loc_grads, _ = tf.clip_by_global_norm(loc_grads, self.params.max_grad_norm)
 
                 #Add to scalar tensorboard
                 self.scalarDict['baselines_mse'] = baselines_mse
                 self.scalarDict['xent'] = xent
                 self.scalarDict['logllratio'] = logllratio
                 self.scalarDict['reward'] = reward
-                self.scalarDict['loss'] = loss
+                self.scalarDict['sup_loss'] = sup_loss
+                self.scalarDict['reinforce_loss'] = reinforce_loss
 
                 self.varDict['loc_mean_arr'] = self.loc_mean_arr
                 self.varDict['sampled_loc_arr'] = self.sampled_loc_arr
@@ -169,7 +184,10 @@ class RAM(base):
                     staircase=True)
                 learning_rate = tf.maximum(learning_rate, self.params.lr_min)
                 opt = tf.train.AdamOptimizer(learning_rate)
-                self.train_op = opt.apply_gradients(zip(grads, var_list), global_step=global_step)
+
+                core_train_op = opt.apply_gradients(zip(core_grads, core_net_var), global_step=global_step)
+                loc_train_op = opt.apply_gradients(zip(loc_grads, loc_net_var), global_step=global_step)
+                self.train_op = tf.group(core_train_op, loc_train_op)
 
                 self.scalarDict['learning_rate'] = learning_rate
 

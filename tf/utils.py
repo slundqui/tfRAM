@@ -59,32 +59,15 @@ def normImage(img, normalize):
         outImg = norm_img
         return tf.cast(tf.clip_by_value(outImg*255, 0, 255), tf.uint8)
 
-def batchnorm(input, namePrefix, varDict, updateList, inputBnOffset, inputBnScale):
+def batchnorm(input, offset, scale):
     with tf.name_scope("BatchNorm"):
         # this block looks like it has 3 inputs on the graph unless we do this
         input = tf.identity(input)
 
         inputShape = input.get_shape()
-        channels = inputShape[-1]
-        if(inputBnOffset is None):
-            #offset = tf.get_variable(namePrefix+"_bn_offset", [channels], dtype=tf.float32, initializer=tf.zeros_initializer())
-            offset = tf.Variable(tf.zeros([channels], dtype=tf.float32), name=namePrefix+"_bn_offset")
-            if(varDict is not None):
-                varDict[namePrefix+"_bn_offset"] = offset
-            if(updateList is not None):
-                updateList.append(offset)
-        else:
-            offset = inputBnOffset
-
-        if(inputBnScale is None):
-            #scale = tf.get_variable(namePrefix+"_bn_scale", [channels], dtype=tf.float32, initializer=tf.ones_initializer())
-            scale = tf.Variable(tf.ones([channels], dtype=tf.float32), name=namePrefix+"_bn_scale")
-            if(varDict is not None):
-                varDict[namePrefix+"_bn_scale"] = scale
-            if(updateList is not None):
-                updateList.append(scale)
-        else:
-            scale = inputBnScale
+        #channels = inputShape[-1]
+        #offset = tf.Variable(tf.zeros([channels], dtype=tf.float32), name=namePrefix+"_bn_offset")
+        #scale = tf.Variable(tf.ones([channels], dtype=tf.float32), name=namePrefix+"_bn_scale")
 
         if(len(inputShape) == 4):
             mean, variance = tf.nn.moments(input, axes=[0, 1, 2], keep_dims=False)

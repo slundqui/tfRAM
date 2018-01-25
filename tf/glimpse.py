@@ -4,10 +4,11 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tf.utils import weight_variable, bias_variable
+from tf.utils import weight_variable, bias_variable, batchnorm
 
 import pdb
 
+#TODO replace this with https://github.com/jtkim-kaist/ram_modified/blob/master/ram.py
 
 class GlimpseNet(object):
     """Glimpse network.
@@ -45,6 +46,18 @@ class GlimpseNet(object):
         self.b_g1 = bias_variable((self.g_size,))
         self.w_l1 = weight_variable((self.hl_size, self.g_size))
         self.b_l1 = weight_variable((self.g_size,))
+
+        ##batchnorm variables
+        #self.bn_offset_g0 = tf.Variable(tf.zeros([self.hg_size], dtype=tf.float32), name="bn_offset_g0")
+        #self.bn_scale_g0 = tf.Variable(tf.ones([self.hg_size], dtype=tf.float32), name="bn_scale_g0")
+
+        #self.bn_offset_l0 = tf.Variable(tf.zeros([self.hl_size], dtype=tf.float32), name="bn_offset_l0")
+        #self.bn_scale_l0 = tf.Variable(tf.ones([self.hl_size], dtype=tf.float32), name="bn_scale_l0")
+
+        #self.bn_offset_1 = tf.Variable(tf.zeros([self.g_size], dtype=tf.float32), name="bn_offset_1")
+        #self.bn_scale_1 = tf.Variable(tf.ones([self.g_size], dtype=tf.float32), name="bn_scale_1")
+
+
 
     def getVars(self):
         outDict = {'glimpsenet_w_g0': self.w_g0,
@@ -87,12 +100,18 @@ class GlimpseNet(object):
                                    (tf.shape(loc)[0], self.sensor_size))
         #G pipeline, which encodes glimpse
         g = tf.nn.relu(tf.nn.xw_plus_b(glimpse_input, self.w_g0, self.b_g0))
+        #g = batchnorm(g, self.bn_offset_g0, self.bn_scale_g0)
         g = tf.nn.xw_plus_b(g, self.w_g1, self.b_g1)
+
         #L pipeline, which encode locations
         l = tf.nn.relu(tf.nn.xw_plus_b(loc, self.w_l0, self.b_l0))
+        #l = batchnorm(l, self.bn_offset_l0, self.bn_scale_l0)
         l = tf.nn.xw_plus_b(l, self.w_l1, self.b_l1)
+
         #Combine
         g = tf.nn.relu(g + l)
+        #Batch norm
+        #g = batchnorm(g, self.bn_offset_1, self.bn_scale_1)
         return g
 
 
@@ -116,27 +135,30 @@ class LocNet(object):
 
     def getVars(self):
         outDict = {'locnet_w': self.w,
-                   'locnet_b': self.b}
+                   'locnet_b': self.b,
+                   }
         return outDict
 
 
     def __call__(self, input, eval_ph):
-        mean = tf.clip_by_value(tf.nn.xw_plus_b(input, self.w, self.b), -1., 1.)
+        mean = tf.nn.xw_plus_b(input, self.w, self.b)
         #Stops gradient propogation
-        mean = tf.stop_gradient(mean)
+        #mean = tf.stop_gradient(mean)
 
         #Adds random noise to the location for training
         train_loc = mean + tf.random_normal(
             (tf.shape(input)[0], self.loc_dim), stddev=self.loc_std)
         train_loc = tf.clip_by_value(train_loc, -1., 1.)
 
+        loc = tf.stop_gradient(train_loc)
+
         #Set output location with no noise
-        eval_loc = mean
+        #eval_loc = tf.clip_by_value(mean, -1., 1.)
 
         #Select train or eval based on eval_ph
-        loc = tf.where(eval_ph, eval_loc, train_loc)
+        #loc = tf.where(eval_ph, eval_loc, train_loc)
 
         #No backprop from location network
-        loc = tf.stop_gradient(loc)
+        #loc = tf.stop_gradient(loc)
         return loc, mean
 

@@ -45,6 +45,10 @@ def plotGlimpseTrace(imgs, locs, outdir, targetSize=[180, 180], nameprefix=""):
         #Draw lines following locations
         for i in range(nglimpse - 1):
             rr, cc, val = draw.line_aa(y_loc[i], x_loc[i], y_loc[i+1], x_loc[i+1])
+            #Clip values
+            rr = np.clip(rr, 0, targetSize[0]-1)
+            cc = np.clip(cc, 0, targetSize[1]-1)
+
             img[rr, cc, 1] = val
 
         imsave(outdir + "/glimpse_" + nameprefix + "_" + str(b) + ".png", img)

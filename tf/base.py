@@ -20,19 +20,14 @@ class base(object):
         self.varDict = {}
 
         self.params = params
-        self.tf_dir = self.params.run_dir + "/tfout"
+        self.tf_dir = self.params.run_dir + "/tfout/"
         self.ckpt_dir = self.params.run_dir + "/checkpoints/"
         self.save_file = self.ckpt_dir + "/save-model"
-        self.plot_dir = self.params.run_dir + "plots/"
+        self.plot_dir = self.params.run_dir + "/plots/"
         self.makeDirs()
 
-        #TODO
         self.printParamsStr(params)
         self.printRepoDiffStr()
-
-        #Add node for printing params to tensorboard
-        #TODO see if this can be done
-        #tf.summary.text("params", tf.convert_to_tensor(paramsStr))
 
         #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=self.gpuPercent)
         #config = tf.ConfigProto(gpu_options=gpu_options)
