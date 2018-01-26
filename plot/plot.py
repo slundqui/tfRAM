@@ -6,8 +6,10 @@ from scipy.misc import imresize, imsave
 
 #imgs is [batch, y, x, f] and locs is [batch, numglimpse, 2] where last dim is
 #y by x locs, with center as 0, 0, normalized to -1 to 1
-def plotGlimpseTrace(imgs, locs, outdir, targetSize=[180, 180], nameprefix=""):
+def plotGlimpseTrace(imgs, locs, outdir, pix_ratio, targetSize=[180, 180], nameprefix=""):
     (nbatch, ny, nx, nf) = imgs.shape
+    #TODO turn this off
+    assert(ny == nx)
     #TODO make radius a function of image shape
     radius = 3
     (nbatch_2, nglimpse, nloc) = locs.shape
@@ -22,9 +24,13 @@ def plotGlimpseTrace(imgs, locs, outdir, targetSize=[180, 180], nameprefix=""):
     if(nf == 1):
         imgs = np.tile(imgs, [1, 1, 1, 3])
 
+    #Scale locs based on pix_ratio
+
+    scale_loc = locs * 2 * pix_ratio
+
     #Convert locs to integer locs
     #Convert based on targetSize
-    i_locs = (locs + 1)/2
+    i_locs = (scale_loc + 1)/2
     y_locs = np.round(i_locs[..., 0] * targetSize[0]).astype(np.int32)
     x_locs = np.round(i_locs[..., 1] * targetSize[1]).astype(np.int32)
 

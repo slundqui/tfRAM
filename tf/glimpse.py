@@ -31,6 +31,7 @@ class GlimpseNet(object):
         self.hl_size = config.hl_size
         self.g_size = config.g_size
         self.loc_dim = config.loc_dim
+        self.loc_ratio = config.loc_pixel_ratio
 
         self.images_ph = images_ph
 
@@ -45,19 +46,7 @@ class GlimpseNet(object):
         self.w_g1 = weight_variable((self.hg_size, self.g_size))
         self.b_g1 = bias_variable((self.g_size,))
         self.w_l1 = weight_variable((self.hl_size, self.g_size))
-        self.b_l1 = weight_variable((self.g_size,))
-
-        ##batchnorm variables
-        #self.bn_offset_g0 = tf.Variable(tf.zeros([self.hg_size], dtype=tf.float32), name="bn_offset_g0")
-        #self.bn_scale_g0 = tf.Variable(tf.ones([self.hg_size], dtype=tf.float32), name="bn_scale_g0")
-
-        #self.bn_offset_l0 = tf.Variable(tf.zeros([self.hl_size], dtype=tf.float32), name="bn_offset_l0")
-        #self.bn_scale_l0 = tf.Variable(tf.ones([self.hl_size], dtype=tf.float32), name="bn_scale_l0")
-
-        #self.bn_offset_1 = tf.Variable(tf.zeros([self.g_size], dtype=tf.float32), name="bn_offset_1")
-        #self.bn_scale_1 = tf.Variable(tf.ones([self.g_size], dtype=tf.float32), name="bn_scale_1")
-
-
+        self.b_l1 = bias_variable((self.g_size,))
 
     def getVars(self):
         outDict = {'glimpsenet_w_g0': self.w_g0,
@@ -77,6 +66,9 @@ class GlimpseNet(object):
             tf.shape(self.images_ph)[0], self.original_size[0], self.original_size[1],
             self.original_size[2]
         ])
+
+        scale_loc = loc * 2 *self.loc_ratio
+
         glimpse_imgs = []
         #TODO explicitly test this
         for i in range(self.glimpse_scales):
@@ -86,32 +78,32 @@ class GlimpseNet(object):
 
             #Extract glimpses at various sizes
             single_glimpse = tf.image.extract_glimpse(imgs,
-                                                    [self.win_size, self.win_size], loc)
+                                                    [self.win_size, self.win_size], scale_loc)
             glimpse_imgs.append(tf.reshape(single_glimpse, [
-                tf.shape(loc)[0], self.win_size * self.win_size * self.original_size[2]
+                tf.shape(scale_loc)[0], self.win_size * self.win_size * self.original_size[2]
             ]))
 
         #Concatenate glimpse imgs
         return tf.concat(glimpse_imgs, axis=1)
 
-    def __call__(self, loc):
+    def __call__(self, loc, is_train):
         glimpse_input = self.get_glimpse(loc)
         glimpse_input = tf.reshape(glimpse_input,
                                    (tf.shape(loc)[0], self.sensor_size))
         #G pipeline, which encodes glimpse
         g = tf.nn.relu(tf.nn.xw_plus_b(glimpse_input, self.w_g0, self.b_g0))
-        #g = batchnorm(g, self.bn_offset_g0, self.bn_scale_g0)
+        #g = batchnorm(g, "gn_g0", is_train)
         g = tf.nn.xw_plus_b(g, self.w_g1, self.b_g1)
 
         #L pipeline, which encode locations
         l = tf.nn.relu(tf.nn.xw_plus_b(loc, self.w_l0, self.b_l0))
-        #l = batchnorm(l, self.bn_offset_l0, self.bn_scale_l0)
+        #l = batchnorm(l, "gn_l0",is_train)
         l = tf.nn.xw_plus_b(l, self.w_l1, self.b_l1)
 
         #Combine
         g = tf.nn.relu(g + l)
         #Batch norm
-        #g = batchnorm(g, self.bn_offset_1, self.bn_scale_1)
+        #g = batchnorm(g, "gn_g1", is_train)
         return g
 
 
@@ -140,10 +132,12 @@ class LocNet(object):
         return outDict
 
 
-    def __call__(self, input, eval_ph):
+    def __call__(self, input):
         mean = tf.nn.xw_plus_b(input, self.w, self.b)
-        #Stops gradient propogation
-        #mean = tf.stop_gradient(mean)
+        #Clipping
+        #mean = tf.clip_by_value(mean, -1., 1.)
+        #mean = tf.tanh(mean)
+
 
         #Adds random noise to the location for training
         train_loc = mean + tf.random_normal(

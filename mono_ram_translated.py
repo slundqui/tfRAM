@@ -6,7 +6,7 @@ import numpy as np
 import pdb
 
 batch_size = 32
-device = "/gpu:1"
+device = "/gpu:0"
 mt = False
 
 #Get object from which tensorflow will pull data from
@@ -36,10 +36,6 @@ params.win_size = 12
 params.glimpse_scales = 3
 params.sensor_size = params.win_size**2 * params.glimpse_scales
 params.num_steps = 2000001
-params.lr_decay = .99
-params.lr_start = 1e-4
-params.lr_min = 1e-6
-#params.loc_std = 0.1
 
 from tf.RAM import RAM
 for nglimpse in [4, 6, 8]:

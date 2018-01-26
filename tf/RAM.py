@@ -4,7 +4,7 @@ import tensorflow as tf
 from tf.glimpse import GlimpseNet, LocNet
 
 from tf.base import base
-from tf.utils import weight_variable, bias_variable, loglikelihood
+from tf.utils import weight_variable, bias_variable, loglikelihood, batchnorm
 
 from plot.plot import plotGlimpseTrace
 #import matplotlib.pyplot as plt
@@ -21,8 +21,14 @@ class RAM(base):
     def get_next_input(self, output, i):
         #Output is the output of the previous step in LSTM
         #i.e., hidden state h
-        loc, loc_mean = self.loc_net(output, self.eval_ph)
-        gl_next = self.gl(loc)
+
+        #Batchnorm output
+        #bn_output = batchnorm(output, "rnn_output", self.is_train)
+        bn_output = output
+
+        loc, loc_mean = self.loc_net(bn_output)
+        gl_next = self.gl(loc, self.is_train)
+
         self.loc_mean_arr.append(loc_mean)
         self.sampled_loc_arr.append(loc)
         return gl_next
@@ -50,7 +56,7 @@ class RAM(base):
                         name="labels")
                 self.varDict['labels'] = self.labels
 
-                self.eval_ph = tf.placeholder(tf.bool, shape=(), name="eval_ph")
+                self.is_train = tf.placeholder(tf.bool, shape=(), name="is_train")
 
             #Build aux nets
             # Build the aux nets.
@@ -70,30 +76,42 @@ class RAM(base):
             init_loc = tf.random_uniform((N, 2), minval=-1, maxval=1)
             #init_loc = tf.zeros((N, 2))
 
-            init_glimpse = self.gl(init_loc)
 
             #Build core network
             with tf.variable_scope('core_net'):
                 #Various base classes
-                rnn_cell = tf.nn.rnn_cell
-                seq2seq = tf.contrib.legacy_seq2seq
+                #rnn_cell = tf.nn.rnn_cell
+                #seq2seq = tf.contrib.legacy_seq2seq
 
                 #RNN base building block
-                lstm_cell = rnn_cell.LSTMCell(self.params.cell_size, state_is_tuple=True)
+                lstm_cell = tf.contrib.rnn.BasicLSTMCell(self.params.cell_size)
                 #Initial state
-                init_state = lstm_cell.zero_state(N, tf.float32)
-                inputs = [init_glimpse]
-                inputs.extend([0] * (self.params.num_glimpses))
-                #RNN
-                outputs, _ = seq2seq.rnn_decoder(
-                    inputs, init_state, lstm_cell, loop_function=self.get_next_input)
+                state = lstm_cell.zero_state(N, tf.float32)
+                current_glimpse = self.gl(init_loc, self.is_train)
+                outputs = []
+                for g in range(self.params.num_glimpses):
+                    output, state = lstm_cell(current_glimpse, state)
+                    outputs.append(output)
+                    #Update glimpse
+                    current_glimpse = self.get_next_input(output, g)
+
+
+                #inputs.extend([0] * (self.params.num_glimpses))
+                ##RNN
+                #outputs, _ = seq2seq.rnn_decoder(
+                #    inputs, init_state, lstm_cell, loop_function=self.get_next_input)
+
+                bn_outputs = []
+                for output in outputs:
+                    #bn_outputs.append(batchnorm(output, "rnn_output", self.is_train))
+                    bn_outputs.append(output)
 
             #Baseline for variance reduction
             with tf.variable_scope('baseline'):
                 w_baseline = weight_variable((self.params.cell_size, 1))
                 b_baseline = bias_variable((1,))
                 baselines = []
-                for t, output in enumerate(outputs[1:]):
+                for t, output in enumerate(bn_outputs):
                     baseline_t = tf.nn.xw_plus_b(output, w_baseline, b_baseline)
                     baseline_t = tf.squeeze(baseline_t)
                     baselines.append(baseline_t)
@@ -103,7 +121,7 @@ class RAM(base):
             #Classification network
             with tf.variable_scope('classification_net'):
                 # Take the last step only.
-                output = outputs[-1]
+                output = bn_outputs[-1]
                 #Pass through classification network for reward
                 w_logit = weight_variable((self.params.cell_size, self.params.num_classes))
                 b_logit = bias_variable((self.params.num_classes,))
@@ -125,36 +143,44 @@ class RAM(base):
                 advs = rewards - tf.stop_gradient(baselines)
                 logllratio = tf.reduce_mean(logll * advs)
                 reward = tf.reduce_mean(reward)
-
                 #Baseline loss
                 baselines_mse = tf.reduce_mean(tf.square((rewards - baselines)))
+
                 var_list = tf.trainable_variables()
 
                 core_net_var = [v for v in var_list if "glimpse_net" in v.name or
-                                                               "core_net" in v.name or
-                                                               "baseline" in v.name]
+                                                       "core_net" in v.name or
+                                                       "batchnorm" in v.name]
+                baseline_net_var = [v for v in var_list if "baseline" in v.name]
+                class_net_var = [v for v in var_list if "classification_net" in v.name]
                 loc_net_var = [v for v in var_list if "loc_net" in v.name]
-
-                assert(len(var_list) == len(core_net_var) + len(loc_net_var))
+                assert(len(var_list) == len(core_net_var) + len(loc_net_var) + len(class_net_var) + len(baseline_net_var))
 
                 #hybrid loss
                 #TODO baselines only update based on mse?
-                sup_loss = xent + baselines_mse # `-` for minimize
-                reinforce_loss = -logllratio
+                sup_loss = xent
+                #hybrid_loss = -logllratio + xent
+                reinforce_loss = -logllratio + baselines_mse # `-` for minimize
+                #baseline_loss = baselines_mse
 
                 core_grads = tf.gradients(sup_loss, core_net_var)
                 core_grads, _ = tf.clip_by_global_norm(core_grads, self.params.max_grad_norm)
+
+                class_grads = tf.gradients(sup_loss, class_net_var)
+                class_grads, _ = tf.clip_by_global_norm(class_grads, self.params.max_grad_norm)
+
+                baseline_grads = tf.gradients(reinforce_loss, baseline_net_var)
+                baseline_grads, _ = tf.clip_by_global_norm(baseline_grads, self.params.max_grad_norm)
 
                 loc_grads = tf.gradients(reinforce_loss, loc_net_var)
                 loc_grads, _ = tf.clip_by_global_norm(loc_grads, self.params.max_grad_norm)
 
                 #Add to scalar tensorboard
-                self.scalarDict['baselines_mse'] = baselines_mse
-                self.scalarDict['xent'] = xent
-                self.scalarDict['logllratio'] = logllratio
-                self.scalarDict['reward'] = reward
                 self.scalarDict['sup_loss'] = sup_loss
                 self.scalarDict['reinforce_loss'] = reinforce_loss
+                #self.scalarDict['hybrid_loss'] = hybrid_loss
+                #self.scalarDict['baseline_mse'] = baselines_mse
+                self.scalarDict['reward'] = reward
 
                 self.varDict['loc_mean_arr'] = self.loc_mean_arr
                 self.varDict['sampled_loc_arr'] = self.sampled_loc_arr
@@ -183,11 +209,23 @@ class RAM(base):
                     self.params.lr_decay,
                     staircase=True)
                 learning_rate = tf.maximum(learning_rate, self.params.lr_min)
-                opt = tf.train.AdamOptimizer(learning_rate)
+                #opt = tf.train.AdamOptimizer(learning_rate)
+                opt = tf.train.MomentumOptimizer(learning_rate, .9, use_nesterov=True)
 
+                #To insure same sequence of operations per training step, add dependencies
+                #Update core then loc then class
                 core_train_op = opt.apply_gradients(zip(core_grads, core_net_var), global_step=global_step)
-                loc_train_op = opt.apply_gradients(zip(loc_grads, loc_net_var), global_step=global_step)
-                self.train_op = tf.group(core_train_op, loc_train_op)
+                with tf.control_dependencies([core_train_op]):
+                    loc_train_op = opt.apply_gradients(zip(loc_grads, loc_net_var), global_step=global_step)
+                with tf.control_dependencies([loc_train_op]):
+                    baseline_train_op = opt.apply_gradients(zip(baseline_grads, baseline_net_var), global_step=global_step)
+                with tf.control_dependencies([baseline_train_op]):
+                    class_train_op = opt.apply_gradients(zip(class_grads, class_net_var), global_step=global_step)
+
+                #Makes sure to update bn var before training step
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    self.train_op = tf.group(core_train_op, loc_train_op, baseline_train_op, class_train_op)
 
                 self.scalarDict['learning_rate'] = learning_rate
 
@@ -197,7 +235,7 @@ class RAM(base):
         images = np.tile(images, [self.params.M, 1])
         labels = np.tile(labels, [self.params.M])
         #Build feeddict
-        feed_dict = {self.images: images, self.labels: labels, self.eval_ph:False}
+        feed_dict = {self.images: images, self.labels: labels, self.is_train:True}
         #Write flag
         #TODO see if you can put this into base
         if(step%self.params.write_step == 0):
@@ -212,27 +250,27 @@ class RAM(base):
 
         feed_dict = {self.images: images, self.labels: labels,
                      self.injectBool: True, self.injectAcc:injectAcc,
-                     self.eval_ph: self.params.det_eval}
+                     self.is_train: False}
         self.writeTestSummary(feed_dict)
 
     def evalModel(self, images, labels):
         #labels_bak = labels
         # Duplicate M times
         # This repeats each experiment 10 times with random conditions
+        labels_bak = labels
         images = np.tile(images, [self.params.M, 1])
         labels = np.tile(labels, [self.params.M])
-        feed_dict = {self.images: images, self.labels: labels, self.eval_ph: self.params.det_eval}
+        feed_dict = {self.images: images, self.labels: labels, self.is_train: False}
 
         softmax_val = self.sess.run(self.softmax, feed_dict=feed_dict)
 
         #Find average of duplications
         #This is averaging across noisy locations
-        #softmax_val = np.reshape(softmax_val, [self.params.M, -1, self.params.num_classes])
-        #softmax_val = np.mean(softmax_val, 0)
+        softmax_val = np.reshape(softmax_val, [self.params.M, -1, self.params.num_classes])
+        softmax_val = np.mean(softmax_val, 0)
         #Find label value
-
         pred_labels = np.argmax(softmax_val, 1).flatten()
-        correct_count = float(np.sum(pred_labels == labels))/self.params.M
+        correct_count = float(np.sum(pred_labels == labels_bak))
         return correct_count
 
     def plot(self, step, dataObj):
@@ -240,7 +278,7 @@ class RAM(base):
 
     def plotGlimpse(self, step, dataObj, numPlot=5):
         test_imgs = dataObj.getTestData()[0][:numPlot, ...]
-        feed_dict = {self.images: test_imgs, self.eval_ph:self.params.det_eval}
+        feed_dict = {self.images: test_imgs, self.is_train:False}
 
         #Get glimpse locations
         (np_loc_mean_arr, np_sampled_loc_arr) = self.sess.run(
@@ -257,5 +295,5 @@ class RAM(base):
         outdir = self.plot_dir + "/" + str(step) + "/"
         self.makeDir(outdir)
 
-        plotGlimpseTrace(reshape_test_imgs, np_loc_mean_arr, outdir, nameprefix="mean")
-        plotGlimpseTrace(reshape_test_imgs, np_sampled_loc_arr, outdir, nameprefix="sampled")
+        plotGlimpseTrace(reshape_test_imgs, np_loc_mean_arr, outdir, self.params.loc_pixel_ratio, nameprefix="mean")
+        plotGlimpseTrace(reshape_test_imgs, np_sampled_loc_arr, outdir, self.params.loc_pixel_ratio, nameprefix="sampled")
