@@ -67,7 +67,7 @@ class GlimpseNet(object):
             self.original_size[2]
         ])
 
-        scale_loc = loc * 2 *self.loc_ratio
+        scale_loc = tf.clip_by_value(loc * 2 * self.loc_ratio, -1., 1.)
 
         glimpse_imgs = []
         #TODO explicitly test this
@@ -90,6 +90,7 @@ class GlimpseNet(object):
         glimpse_input = self.get_glimpse(loc)
         glimpse_input = tf.reshape(glimpse_input,
                                    (tf.shape(loc)[0], self.sensor_size))
+
         #G pipeline, which encodes glimpse
         g = tf.nn.relu(tf.nn.xw_plus_b(glimpse_input, self.w_g0, self.b_g0))
         #g = batchnorm(g, "gn_g0", is_train)
@@ -134,20 +135,15 @@ class LocNet(object):
 
     def __call__(self, input):
         mean = tf.nn.xw_plus_b(input, self.w, self.b)
-        #Clipping
-        #mean = tf.clip_by_value(mean, -1., 1.)
-        #mean = tf.tanh(mean)
-
 
         #Adds random noise to the location for training
         train_loc = mean + tf.random_normal(
             (tf.shape(input)[0], self.loc_dim), stddev=self.loc_std)
-        train_loc = tf.clip_by_value(train_loc, -1., 1.)
 
         loc = tf.stop_gradient(train_loc)
 
         #Set output location with no noise
-        #eval_loc = tf.clip_by_value(mean, -1., 1.)
+        #eval_loc = mean
 
         #Select train or eval based on eval_ph
         #loc = tf.where(eval_ph, eval_loc, train_loc)

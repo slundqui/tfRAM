@@ -1,10 +1,9 @@
 import pdb
 import numpy as np
 import tensorflow as tf
-from tf.glimpse import GlimpseNet, LocNet
 
 from tf.base import base
-from tf.utils import weight_variable, bias_variable, loglikelihood
+from tf.utils import weight_variable, bias_variable
 #import matplotlib.pyplot as plt
 
 #Spatial transform network

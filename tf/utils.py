@@ -2,8 +2,6 @@ import tensorflow as tf
 import numpy as np
 import pdb
 
-
-
 def weight_variable(shape, std=0.01):
     initial = tf.truncated_normal(shape, stddev=std)
     return tf.Variable(initial)
@@ -65,7 +63,7 @@ def batchnorm(input, name, is_train):
     #else:
     #    var_reuse = tf.AUTO_REUSE
     return tf.contrib.layers.batch_norm(input,
-                                        center=True, scale=True,
+                                        center=True, scale=False,
                                         is_training=is_train,
                                         reuse=tf.AUTO_REUSE,
                                         scope=name+'_batchnorm')

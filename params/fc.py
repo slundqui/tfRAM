@@ -31,7 +31,7 @@ class FcParams(object):
     num_classes        = 10      #Number of output classes
     max_grad_norm      = 5.      #Clipping norm for gradient clipping
 
-    num_steps          = 300001  #Number of total steps
+    num_steps          = 1000001  #Number of total steps
     lr_start           = 1e-3    #Starting learning rate for lr decay
-    lr_min             = 1e-4    #Minimum learning rate for lr decay
-    lr_decay           = .97     #Learning rate decay multiplier
+    lr_min             = 1e-5    #Minimum learning rate for lr decay
+    lr_decay           = .98     #Learning rate decay multiplier

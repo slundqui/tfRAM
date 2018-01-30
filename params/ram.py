@@ -10,7 +10,7 @@ class RamParams(object):
     #Save parameters
     save_period        = 100000
     #output plots directory
-    plot_period        = 100000
+    plot_period        = 10000
     eval_period        = 1718 # 1 epoch
     #Progress step
     progress           = 100
@@ -29,7 +29,7 @@ class RamParams(object):
     win_size           = 8       #The size of each glimpse in pixels in both x and y dimension
     batch_size         = 32      #Batch size of training
     eval_batch_size    = 50      #Batch size of testing
-    loc_std            = 0.03    #Standard deviation of random noise added to locations
+    loc_std            = 0.1     #Standard deviation of random noise added to locations
     det_eval           = False   #If true, use only mean of location network for evaluation
     original_size      = None    #dataObj.inputShape #Size of the input image in (y, x, f)
     glimpse_scales     = 1       #Number of channels in input image
@@ -41,14 +41,15 @@ class RamParams(object):
     cell_size          = 256     #Size of hidden latent space in LSTM
     num_glimpses       = 6       #Number of total glimpses
     num_classes        = 10      #Number of output classes
-    max_grad_norm      = 3.      #Clipping norm for gradient clipping
+    max_grad_norm      = 5.      #Clipping norm for gradient clipping
+    reinforce_lambda   = 1
 
-    loc_pixel_ratio    = .15     #Ratio of coord unit to image width unit
+    loc_pixel_ratio    = .5     #Ratio of coord unit to image width unit
 
     num_steps          = 500001  #Number of total steps
-    lr_start           = .01     #Starting learning rate for lr decay
-    lr_min             = 0       #Minimum learning rate for lr decay
-    lr_decay           = .97     #Learning rate decay multiplier
+    lr_start           = 1e-3    #Starting learning rate for lr decay
+    lr_min             = 1e-5    #Minimum learning rate for lr decay
+    lr_decay           = .98     #Learning rate decay multiplier
 
     # Monte Carlo sampling
     M                  = 10
