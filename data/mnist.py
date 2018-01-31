@@ -21,12 +21,12 @@ class mnistData(object):
     #translateSize is a 2 tuple with height, width of canvas to put mnist digit on
     #Clutteted will clutter input image with random patches of other digits
     #TODO set random seed
-    def __init__(self, path, translateSize=None, clutterImg=False, numClutterRange=(5, 7), clutterSize=(8, 8)):
+    def __init__(self, path, translateSize=None, clutterImg=False, numClutter=(5, 7), clutterSize=(8, 8)):
         self.mnist = input_data.read_data_sets(path, one_hot=False)
         self.num_train_examples = self.mnist.train.num_examples
         self.translateSize = translateSize
         self.clutterImg = clutterImg
-        self.numClutterRange = numClutterRange
+        self.numClutter = numClutter
         self.clutterSize = clutterSize
 
         self.test_images = self.mnist.test.images
@@ -65,7 +65,11 @@ class mnistData(object):
         #TODO time this and optimize if need be
         for e_idx in range(numExamples):
             #Generate random number of clutters
-            numClutters = random.randint(self.numClutterRange[0], self.numClutterRange[1])
+            if(type(self.numClutter) is tuple or type(self.numClutter) is list):
+                numClutters = random.randint(self.numClutter[0], self.numClutter[1])
+            else:
+                numClutters = self.numClutter
+
             for j in range(numClutters):
                 #Generate random index from pallet
                 c_idx = random.randint(0, self.numClutterPallet-1)

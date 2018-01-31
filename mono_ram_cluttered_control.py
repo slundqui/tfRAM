@@ -17,9 +17,9 @@ if(mt):
     #Make new class based on mnist class
     mt_mnistData = mtWrapper(mnistData, batch_size)
     #Instantiate class
-    dataObj = mt_mnistData(path, translateSize=(60, 60), clutterImg=True, numClutterRange=(3, 6))
+    dataObj = mt_mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
 else:
-    dataObj = mnistData(path, translateSize=(60, 60), clutterImg=True, numClutterRange=(3, 6))
+    dataObj = mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
 
 #Conv control
 from params.conv import ConvParams
@@ -30,7 +30,7 @@ params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 params.run_dir = params.out_dir + "/mono_conv_cluttered/"
 params.num_steps = 2000001
-params.lr_decay = .99
+params.lr_decay = .999
 params.lr_start = 1e-3
 
 from tf.convBaseline import convBaseline
@@ -48,7 +48,7 @@ params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 params.num_steps = 2000001
-params.lr_decay = .99
+params.lr_decay = .999
 params.lr_start = 1e-3
 
 from tf.fcBaseline import fcBaseline
