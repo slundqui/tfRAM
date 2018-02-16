@@ -37,7 +37,7 @@ params.glimpse_scales = 4
 params.sensor_size = params.win_size**2 * params.glimpse_scales
 
 from tf.RAM import RAM
-for nglimpse in [4, 6, 8]:
+for nglimpse in [8]:
     params.run_dir = params.out_dir + "/mono_ram_cluttered_big_nglimpse_" + str(nglimpse) + "/"
     params.num_glimpses = nglimpse
 

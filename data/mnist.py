@@ -3,12 +3,51 @@ import pdb
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import tensorflow as tf
 
 #def imshow(img):
 #    plt.figure()
 #    img = (img+1)/2
 #    img = np.clip(img, 0, 1)
 #    plt.imshow(img)
+
+
+class patchExtractor(object):
+    def __init__(self, win_size, glimpse_scales):
+        self.images_ph = tf.placeholder(tf.float32, shape=[None, None, None, None], name="inImage")
+        self.loc_ph = tf.placeholder(tf.float32, shape=[None, 2], name="inLoc")
+        self.win_size = win_size
+        self.glimpse_scales = glimpse_scales
+        self.output = self.get_glimpse()
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())
+
+    def get_glimpse(self):
+        imgs = self.images_ph
+        loc = self.loc_ph
+        image_size = tf.shape(imgs)
+
+        scale_loc = tf.clip_by_value(loc, -1., 1.)
+
+        glimpse_imgs = []
+        #TODO explicitly test this
+        for i in range(self.glimpse_scales):
+            if(i > 0):
+                #Scale image down
+                imgs = tf.image.resize_images(imgs, [image_size[1]//(2*i), image_size[2]//(2*i)])
+
+            #Extract glimpses at various sizes
+            single_glimpse = tf.image.extract_glimpse(imgs,
+                                                    [self.win_size[0], self.win_size[1]], scale_loc)
+            glimpse_imgs.append(single_glimpse)
+
+        #Concatenate glimpse imgs in feature dim
+        return tf.concat(glimpse_imgs, axis=3)
+
+    def __call__(self, images, loc):
+        feed_dict = {self.images_ph: images, self.loc_ph:loc}
+        return self.sess.run(self.output, feed_dict=feed_dict)
+
 
 """
 An object that handles data input
@@ -21,20 +60,24 @@ class mnistData(object):
     #translateSize is a 2 tuple with height, width of canvas to put mnist digit on
     #Clutteted will clutter input image with random patches of other digits
     #TODO set random seed
-    def __init__(self, path, translateSize=None, clutterImg=False, numClutter=(5, 7), clutterSize=(8, 8)):
+    def __init__(self, path, translateSize=None, clutterImg=False, numClutter=(5, 7), clutterSize=(8, 8), flatten=True, getGt=True, patch=False, patchSize=[12, 12], numPatchScales=3):
         self.mnist = input_data.read_data_sets(path, one_hot=False)
         self.num_train_examples = self.mnist.train.num_examples
         self.translateSize = translateSize
         self.clutterImg = clutterImg
         self.numClutter = numClutter
         self.clutterSize = clutterSize
+        self.flatten=flatten
+        self.getGt=getGt
+        self.patch=patch
 
         self.test_images = self.mnist.test.images
+        numTestImgs = self.test_images.shape[0]
+        self.test_images = np.reshape(self.test_images, (numTestImgs,) + self.raw_image_shape)
         self.test_labels = self.mnist.test.labels
         if(self.translateSize is not None):
             self.inputShape = (translateSize[0], translateSize[1], 1)
             #If translated, do test data here first
-            images = self.mnist.test.images
             self.test_images = self.translate(self.test_images)
 
         if(self.clutterImg):
@@ -45,23 +88,28 @@ class mnistData(object):
             #If cluttered, do test data here first
             self.test_images = self.clutter(self.test_images)
 
+        if(self.patch):
+            self.inputShape = (patchSize[0], patchSize[1], numPatchScales)
+            self.extractPatch = patchExtractor(patchSize, numPatchScales)
+
+        if(self.flatten):
+            self.test_images = np.reshape(self.test_images, [numTestImgs, -1])
+
     #Takes images of size (sample, features, and place digit on random position on canvas)
     def translate(self, images):
-        (numExamples, numFeatures) = images.shape
-        r_images = np.reshape(images, (numExamples,) + self.raw_image_shape)
-        out_images = np.zeros((numExamples,) + self.translateSize + (1,))
+        numExamples = images.shape[0]
+        out_images = np.zeros([numExamples, self.translateSize[0], self.translateSize[1], self.raw_image_shape[2]])
         for i in range(numExamples):
             #Random x and y position
             yPos = random.randint(0, self.translateSize[0] - self.raw_image_shape[0])
             xPos = random.randint(0, self.translateSize[1] - self.raw_image_shape[1])
-            out_images[i, yPos:yPos+self.raw_image_shape[0], xPos:xPos+self.raw_image_shape[1], :] = r_images[i]
+            out_images[i, yPos:yPos+self.raw_image_shape[0], xPos:xPos+self.raw_image_shape[1], :] = images[i]
 
-        return np.reshape(out_images, [numExamples, -1])
+        return out_images
 
     #Adds clutter to a given image
     def clutter(self, images):
-        (numExamples, numFeatures) = images.shape
-        r_images = np.reshape(images, (numExamples,) + self.inputShape)
+        numExamples = images.shape[0]
         #TODO time this and optimize if need be
         for e_idx in range(numExamples):
             #Generate random number of clutters
@@ -86,11 +134,11 @@ class mnistData(object):
                 target_idx_y = random.randint(0, self.translateSize[0] - self.clutterSize[0])
                 target_idx_x = random.randint(0, self.translateSize[1] - self.clutterSize[1])
                 #Place patch onto image via alpha blending
-                r_images[e_idx,
+                images[e_idx,
                          target_idx_y:target_idx_y+self.clutterSize[0],
                          target_idx_x:target_idx_x+self.clutterSize[1],
                          :] *= (1-patch)
-                r_images[e_idx,
+                images[e_idx,
                          target_idx_y:target_idx_y+self.clutterSize[0],
                          target_idx_x:target_idx_x+self.clutterSize[1],
                          :] += patch
@@ -98,36 +146,56 @@ class mnistData(object):
                 #TODO patch overlaps image. Either clutter first then place image, or place nonzero pixels only
                 #Preferably nonzero pixels only
         #reshape images and return
-        out_images = np.reshape(r_images, [numExamples, -1])
-        return out_images
-
+        return images
 
     #Gets numExample images and stores it into an outer dimension.
     #This is what TF object calls to get images for training
     def getData(self, numExample):
         images, labels = self.mnist.train.next_batch(numExample)
+        #Reshape into y, x, f
+        images = np.reshape(images, (numExample,) + self.raw_image_shape)
         if(self.translateSize is not None):
             images = self.translate(images)
         if(self.clutterImg):
             images = self.clutter(images)
-        return (images, labels)
+        if(self.flatten):
+            images = np.reshape(images, [numExample, -1])
+
+        if(self.patch):
+            #Generate random locs between -1 and 1
+            rand_locs = np.random.uniform(-1, 1, size=[numExample, 2])
+            images = self.extractPatch(images, rand_locs)
+
+        if(self.getGt):
+            return (images, labels)
+        else:
+            return images
 
     def getTestData(self):
-        return (self.test_images, self.test_labels)
-
-    def getValData(self):
-        images = self.mnist.validation.images
-        labels = self.mnist.validation.labels
-        return(images, labels)
+        if(self.getGt):
+            return (self.test_images, self.test_labels)
+        else:
+            return self.test_images
+#
+#    def getValData(self):
+#        images = self.mnist.validation.images
+#        labels = self.mnist.validation.labels
+#        return(images, labels)
 
 if __name__ == "__main__":
     path = "/home/slundquist/mountData/datasets/mnist"
-    obj = mnistObj(path, translateSize=(60, 60), clutterImg=True)
+    obj = mnistData(path, translateSize=(60, 60), clutterImg=True, flatten=False, patch=True, patchSize=[30, 30])
 
     for i in range(10):
         (data, gt) = obj.getData(4)
         plt.figure()
-        r_data = np.reshape(data[0], (60, 60))
+        r_data = data[0, :, :, 0]
+        plt.imshow(r_data, cmap="gray")
+        plt.figure()
+        r_data = data[0, :, :, 1]
+        plt.imshow(r_data, cmap="gray")
+        plt.figure()
+        r_data = data[0, :, :, 2]
         plt.imshow(r_data, cmap="gray")
         plt.show()
         plt.close('all')

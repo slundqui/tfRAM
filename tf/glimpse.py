@@ -8,8 +8,6 @@ from tf.utils import weight_variable, bias_variable, batchnorm
 
 import pdb
 
-#TODO replace this with https://github.com/jtkim-kaist/ram_modified/blob/master/ram.py
-
 class GlimpseNet(object):
     """Glimpse network.
 
