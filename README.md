@@ -38,8 +38,8 @@ Solid square is first glimpse, line is path of attention, circle is last glimpse
 <table>
   <tr><th> Mean output                                           </th><th> Sampled output                              </th></tr>
   <tr><td><img src="readme_imgs/glimpse_mean_0.png" alt="mean0"> </td><td> <img src="readme_imgs/glimpse_sampled_0.png" alt="samp0"> </td></tr>
-  <tr><td><img src="readme_imgs/glimpse_mean_1.png" alt="mean1"> </td><td> <img src="readme_imgs/glimpse_sampled_0.png" alt="samp1"> </td></tr>
-  <tr><td><img src="readme_imgs/glimpse_mean_2.png" alt="mean2"> </td><td> <img src="readme_imgs/glimpse_sampled_0.png" alt="samp2"> </td></tr>
-  <tr><td><img src="readme_imgs/glimpse_mean_3.png" alt="mean3"> </td><td> <img src="readme_imgs/glimpse_sampled_0.png" alt="samp3"> </td></tr>
-  <tr><td><img src="readme_imgs/glimpse_mean_4.png" alt="mean4"> </td><td> <img src="readme_imgs/glimpse_sampled_0.png" alt="samp4"> </td></tr>
+  <tr><td><img src="readme_imgs/glimpse_mean_1.png" alt="mean1"> </td><td> <img src="readme_imgs/glimpse_sampled_1.png" alt="samp1"> </td></tr>
+  <tr><td><img src="readme_imgs/glimpse_mean_2.png" alt="mean2"> </td><td> <img src="readme_imgs/glimpse_sampled_2.png" alt="samp2"> </td></tr>
+  <tr><td><img src="readme_imgs/glimpse_mean_3.png" alt="mean3"> </td><td> <img src="readme_imgs/glimpse_sampled_3.png" alt="samp3"> </td></tr>
+  <tr><td><img src="readme_imgs/glimpse_mean_4.png" alt="mean4"> </td><td> <img src="readme_imgs/glimpse_sampled_4.png" alt="samp4"> </td></tr>
 
