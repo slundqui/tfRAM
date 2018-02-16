@@ -17,9 +17,9 @@ if(mt):
     #Make new class based on mnist class
     mt_mnistData = mtWrapper(mnistData, batch_size)
     #Instantiate class
-    dataObj = mt_mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
+    dataObj = mt_mnistData(path, translateSize=(100, 100), clutterImg=True, numClutter=8)
 else:
-    dataObj = mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
+    dataObj = mnistData(path, translateSize=(100, 100), clutterImg=True, numClutter=8)
 
 #Conv control
 from params.conv import ConvParams
@@ -28,10 +28,11 @@ params = ConvParams()
 params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
-params.run_dir = params.out_dir + "/mono_conv_cluttered/"
+params.run_dir = params.out_dir + "/conv_cluttered_big/"
 params.num_steps = 2000001
 params.lr_decay = .999
 params.lr_start = 1e-3
+params.num_fc_units = 86
 
 from tf.convBaseline import convBaseline
 tfObj = convBaseline(params)
@@ -55,7 +56,7 @@ from tf.fcBaseline import fcBaseline
 for hidden_units in [64, 256]:
     params.num_fc1_units = hidden_units
     params.num_fc2_units = hidden_units
-    params.run_dir = params.out_dir + "/mono_fc_cluttered_" + str(hidden_units) + "/"
+    params.run_dir = params.out_dir + "/fc_cluttered_" + str(hidden_units) + "/"
     tfObj = fcBaseline(params)
     tfObj.trainModel(dataObj)
     tfObj.evalModelBatch(dataObj, writeOut=True)

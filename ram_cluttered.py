@@ -17,9 +17,9 @@ if(mt):
     #Make new class based on mnist class
     mt_mnistData = mtWrapper(mnistData, batch_size)
     #Instantiate class
-    dataObj = mt_mnistData(path, translateSize=(100, 100), clutterImg=True, numClutter=8)
+    dataObj = mt_mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
 else:
-    dataObj = mnistData(path, translateSize=(100, 100), clutterImg=True, numClutter=8)
+    dataObj = mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
 
 #Load default params
 from params.ram import RamParams
@@ -33,12 +33,12 @@ params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 
 params.win_size = 12
-params.glimpse_scales = 4
+params.glimpse_scales = 3
 params.sensor_size = params.win_size**2 * params.glimpse_scales
 
 from tf.RAM import RAM
-for nglimpse in [8]:
-    params.run_dir = params.out_dir + "/mono_ram_cluttered_big_nglimpse_" + str(nglimpse) + "/"
+for nglimpse in [4, 6, 8]:
+    params.run_dir = params.out_dir + "/ram_cluttered_nglimpse_" + str(nglimpse) + "/"
     params.num_glimpses = nglimpse
 
     #Allocate tensorflow object

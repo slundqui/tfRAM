@@ -28,7 +28,7 @@ params = ConvParams()
 params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
-params.run_dir = params.out_dir + "/mono_conv_translated/"
+params.run_dir = params.out_dir + "/conv_translated/"
 params.num_steps = 2000001
 params.lr_decay = .99
 params.lr_start = 1e-3
@@ -55,7 +55,7 @@ from tf.fcBaseline import fcBaseline
 for hidden_units in [64, 256]:
     params.num_fc1_units = hidden_units
     params.num_fc2_units = hidden_units
-    params.run_dir = params.out_dir + "/mono_fc_translated_" + str(hidden_units) + "/"
+    params.run_dir = params.out_dir + "/fc_translated_" + str(hidden_units) + "/"
     tfObj = fcBaseline(params)
     tfObj.trainModel(dataObj)
     tfObj.evalModelBatch(dataObj, writeOut=True)

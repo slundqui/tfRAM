@@ -17,37 +17,9 @@ if(mt):
     #Make new class based on mnist class
     mt_mnistData = mtWrapper(mnistData, batch_size)
     #Instantiate class
-    dataObj = mt_mnistData(path)
+    dataObj = mt_mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
 else:
-    dataObj = mnistData(path)
-
-#Load default params
-from params.ram import RamParams
-params = RamParams()
-
-#Overwrite various params
-params.device = device
-params.original_size = dataObj.inputShape
-params.num_train_examples = dataObj.num_train_examples
-
-#dataObj = mtWrapper(dataObj, params.batch_size)
-
-from tf.RAM import RAM
-
-#Loop through num_glimpses
-for nglimpse in range(2, 8):
-    params.run_dir = params.out_dir + "/mono_ram_base_nglimpse_" + str(nglimpse) + "/"
-    params.num_glimpses = nglimpse
-
-    #Allocate tensorflow object
-    #This will build the graph
-    tfObj = RAM(params)
-    print("Done init")
-
-    tfObj.trainModel(dataObj)
-    tfObj.evalModelBatch(dataObj, writeOut=True)
-    print("Done run")
-    tfObj.closeSess()
+    dataObj = mnistData(path, translateSize=(60, 60), clutterImg=True, numClutter=4)
 
 #Conv control
 from params.conv import ConvParams
@@ -56,7 +28,10 @@ params = ConvParams()
 params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
-params.run_dir = params.out_dir + "/mono_conv_base/"
+params.run_dir = params.out_dir + "/conv_cluttered/"
+params.num_steps = 2000001
+params.lr_decay = .999
+params.lr_start = 1e-3
 
 from tf.convBaseline import convBaseline
 tfObj = convBaseline(params)
@@ -72,14 +47,20 @@ params = FcParams()
 params.device = device
 params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
-params.run_dir = params.out_dir + "/mono_fc_base/"
+params.num_steps = 2000001
+params.lr_decay = .999
+params.lr_start = 1e-3
 
 from tf.fcBaseline import fcBaseline
-tfObj = fcBaseline(params)
-tfObj.trainModel(dataObj)
-tfObj.evalModelBatch(dataObj, writeOut=True)
-print("Done run")
-tfObj.closeSess()
+for hidden_units in [64, 256]:
+    params.num_fc1_units = hidden_units
+    params.num_fc2_units = hidden_units
+    params.run_dir = params.out_dir + "/fc_cluttered_" + str(hidden_units) + "/"
+    tfObj = fcBaseline(params)
+    tfObj.trainModel(dataObj)
+    tfObj.evalModelBatch(dataObj, writeOut=True)
+    print("Done run")
+    tfObj.closeSess()
 
 
 

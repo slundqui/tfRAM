@@ -5,8 +5,8 @@ from data.multithread import mtWrapper
 import numpy as np
 import pdb
 
-batch_size = 128
-device = "/gpu:0"
+batch_size = 32
+device = "/gpu:1"
 mt = False
 
 #Get object from which tensorflow will pull data from
@@ -22,8 +22,8 @@ else:
     dataObj = mnistData(path, translateSize=(60, 60))
 
 #Load default params
-from params.dram import DramParams
-params = DramParams()
+from params.ram import RamParams
+params = RamParams()
 
 params.batch_size = batch_size
 
@@ -33,18 +33,17 @@ params.original_size = dataObj.inputShape
 params.num_train_examples = dataObj.num_train_examples
 
 params.win_size = 12
-params.glimpse_scales = 2
+params.glimpse_scales = 3
 params.sensor_size = params.win_size**2 * params.glimpse_scales
-params.num_steps = 2000001
 
-from tf.DRAM import DRAM
+from tf.RAM import RAM
 for nglimpse in [4, 6, 8]:
-    params.run_dir = params.out_dir + "/mono_dram_translated_nglimpse_" + str(nglimpse) + "/"
+    params.run_dir = params.out_dir + "/ram_translated_nglimpse_" + str(nglimpse) + "/"
     params.num_glimpses = nglimpse
 
     #Allocate tensorflow object
     #This will build the graph
-    tfObj = DRAM(params)
+    tfObj = RAM(params)
     print("Done init")
 
     tfObj.trainModel(dataObj)
