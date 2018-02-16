@@ -33,9 +33,9 @@ Reproduced results:
 60 by 60 Cluttered MNIST 6 glimpses examples
 | Mean output                                                               | Sampled output |
 | ----------------------------------------------                            | -------------- |
-|![mean0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_mean_0.png) | ![samp0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_sampled_0.png) |
-|![mean0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_mean_1.png) | ![samp0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_sampled_1.png) |
-|![mean0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_mean_2.png) | ![samp0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_sampled_2.png) |
-|![mean0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_mean_3.png) | ![samp0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_sampled_3.png) |
-|![mean0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_mean_4.png) | ![samp0](https://github.com/slundqui/tfRAM/readme_imgs/glimpse_sampled_4.png) |
+|![mean0](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_mean_0.png)| ![samp0](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_sampled_0.png) |
+|![mean1](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_mean_0.png)| ![samp1](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_sampled_0.png) |
+|![mean2](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_mean_0.png)| ![samp2](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_sampled_0.png) |
+|![mean3](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_mean_0.png)| ![samp3](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_sampled_0.png) |
+|![mean4](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_mean_0.png)| ![samp4](https://github.com/slundqui/tfRAM/tree/master/readme_imgs/glimpse_sampled_0.png) |
 
