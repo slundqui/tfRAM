@@ -1,16 +1,32 @@
 Tensorflow implementation of Recurrent Models of Visual Attention (Mnih et al. 2014), with additional research. Code based off of https://github.com/zhongwen/RAM.
 
-Reproduced results:
+#Reproduced results
 
-60 by 60 Translated MNIST
-| Model                                          | Error  |
-| ---------------------------------------------- | ------ |
-| FC, 2 layers (64 hiddens each)                 | 6.78%  |
-| FC, 2 layers (256 hiddens each)                | 2.65%  |
-| Convolutional, 2 layers                        | 1.57%  |
-| RAM, 4 glimpses, $12 \times 12$, 3 scale       | 1.54%  |
-| RAM, 6 glimpses, $12 \times 12$, 3 scale       | 1.08%  |
-| RAM, 8 glimpses, $12 \times 12$, 3 scale       | 0.94%  |
+##60 by 60 Translated MNIST
+<table>
+  <tr>
+    <th>Model</th>
+    <th>Error</th>
+  </tr>
+  <tr>
+    <td> FC, 2 layers (64 hiddens each)           </td>      <td> 6.78%  </td>
+  </tr>
+  <tr>
+    <td> FC, 2 layers (256 hiddens each)          </td>      <td> 2.65%  </td>
+  </tr>
+  <tr>
+    <td> Convolutional, 2 layers                  </td>      <td> 1.57%  </td>
+  </tr>
+  <tr>
+    <td> RAM, 4 glimpses, $12 \times 12$, 3 scale </td>      <td> 1.54%  </td>
+  </tr>
+  <tr>
+    <td> RAM, 6 glimpses, $12 \times 12$, 3 scale </td>      <td> 1.08%  </td>
+  </tr>
+  <tr>
+    <td> RAM, 8 glimpses, $12 \times 12$, 3 scale </td>      <td> 0.94%  </td>
+  </tr>
+</table>
 
 | 60 by 60 Cluttered Translated MNIST
 | Model                                          | Error  |
