@@ -13,11 +13,13 @@ import tensorflow as tf
 
 
 class patchExtractor(object):
-    def __init__(self, win_size, glimpse_scales):
+    def __init__(self, win_size, glimpse_scales, zeroPad=False):
         self.images_ph = tf.placeholder(tf.float32, shape=[None, None, None, None], name="inImage")
         self.loc_ph = tf.placeholder(tf.float32, shape=[None, 2], name="inLoc")
         self.win_size = win_size
         self.glimpse_scales = glimpse_scales
+        self.zeroPad = zeroPad
+
         self.output = self.get_glimpse()
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -36,9 +38,22 @@ class patchExtractor(object):
                 #Scale image down
                 imgs = tf.image.resize_images(imgs, [image_size[1]//(2*i), image_size[2]//(2*i)])
 
-            #Extract glimpses at various sizes
-            single_glimpse = tf.image.extract_glimpse(imgs,
-                                                    [self.win_size[0], self.win_size[1]], scale_loc)
+            if(self.zeroPad):
+                #Pad image with 0
+                pad_width = int(np.ceil(np.max(self.win_size)/2))
+                pad_img = tf.pad(imgs, [[0, 0], [pad_width, pad_width], [pad_width, pad_width], [0, 0]])
+                f_image_size = tf.cast(tf.shape(imgs), tf.float32)
+                #Adjust locs to new image shape
+                pad_loc_0 = scale_loc[:, 0] * f_image_size[1] / (f_image_size[1]+2*pad_width)
+                pad_loc_1 = scale_loc[:, 1] * f_image_size[2] / (f_image_size[2]+2*pad_width)
+                pad_loc = tf.stack([pad_loc_0, pad_loc_1], axis=1)
+                #Extract glimpses
+                single_glimpse = tf.image.extract_glimpse(pad_img,
+                                        [self.win_size[0], self.win_size[1]], pad_loc)
+            else:
+                #Extract glimpses at various sizes
+                single_glimpse = tf.image.extract_glimpse(imgs,
+                                        [self.win_size[0], self.win_size[1]], scale_loc)
             glimpse_imgs.append(single_glimpse)
 
         #Concatenate glimpse imgs in feature dim
@@ -60,8 +75,9 @@ class mnistData(object):
     #translateSize is a 2 tuple with height, width of canvas to put mnist digit on
     #Clutteted will clutter input image with random patches of other digits
     #TODO set random seed
-    def __init__(self, path, translateSize=None, clutterImg=False, numClutter=(5, 7), clutterSize=(8, 8), flatten=True, getGt=True, patch=False, patchSize=[12, 12], numPatchScales=3):
+    def __init__(self, path, normalize=False, translateSize=None, clutterImg=False, numClutter=(5, 7), clutterSize=(8, 8), flatten=True, getGt=True, patch=False, patchSize=[12, 12], numPatchScales=3, zeroPad=False):
         self.mnist = input_data.read_data_sets(path, one_hot=False)
+        self.normalize = normalize
         self.num_train_examples = self.mnist.train.num_examples
         self.translateSize = translateSize
         self.clutterImg = clutterImg
@@ -90,7 +106,7 @@ class mnistData(object):
 
         if(self.patch):
             self.inputShape = (patchSize[0], patchSize[1], numPatchScales)
-            self.extractPatch = patchExtractor(patchSize, numPatchScales)
+            self.extractPatch = patchExtractor(patchSize, numPatchScales, zeroPad)
 
         if(self.flatten):
             self.test_images = np.reshape(self.test_images, [numTestImgs, -1])
@@ -166,6 +182,9 @@ class mnistData(object):
             rand_locs = np.random.uniform(-1, 1, size=[numExample, 2])
             images = self.extractPatch(images, rand_locs)
 
+        if(self.normalize):
+            images = (images - np.mean(images))/(np.std(images) + 1e-6)
+
         if(self.getGt):
             return (images, labels)
         else:
@@ -184,7 +203,7 @@ class mnistData(object):
 
 if __name__ == "__main__":
     path = "/home/slundquist/mountData/datasets/mnist"
-    obj = mnistData(path, translateSize=(60, 60), clutterImg=True, flatten=False, patch=True, patchSize=[30, 30])
+    obj = mnistData(path, translateSize=(60, 60), clutterImg=True, flatten=False, patch=True, patchSize=[50, 50], zeroPad=True)
 
     for i in range(10):
         (data, gt) = obj.getData(4)

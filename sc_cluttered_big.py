@@ -17,25 +17,25 @@ if(mt):
     #Make new class based on mnist class
     mt_mnistData = mtWrapper(mnistData, batch_size)
     #Instantiate class
-    dataObj = mt_mnistData(path, translateSize=(100, 100), clutterImg=True, numClutter=8, flatten=False, getGt=False, patch=True, numPatchScales=4)
+    dataObj = mt_mnistData(path, normalize=True, translateSize=(100, 100), clutterImg=True, numClutter=8, flatten=False, getGt=False, patch=True, numPatchScales=4, zeroPad=True)
 else:
-    dataObj = mnistData(path, translateSize=(100, 100), clutterImg=True, numClutter=8, flatten=False, getGt=False, patch=True, numPatchScales=4)
+    dataObj = mnistData(path, normalize=True, translateSize=(100, 100), clutterImg=True, numClutter=8, flatten=False, getGt=False, patch=True, numPatchScales=4, zeroPad=True)
 
 #TODO change these params to be objects
 params = {
     #Base output directory
     'outDir':          "/home/slundquist/mountData/tfSparseCode/",
     #Inner run directory
-    'runDir':          "/lca_adam_mnist_cluttered_big/",
+    'runDir':          "/lca_adam_mnist_cluttered_big_noedge/",
     'tfDir':           "/tfout",
     #Save parameters
     'ckptDir':         "/checkpoints/",
     'saveFile':        "/save-model",
-    'savePeriod':      200, #In terms of displayPeriod
+    'savePeriod':      1000, #In terms of displayPeriod
     #output plots directory
     'plotDir':         "plots/",
-    'plotReconPeriod':  1000*400,
-    'plotWeightPeriod': 1000*400,
+    'plotReconPeriod':  1000*1000,
+    'plotWeightPeriod': 1000*1000,
     #Progress step
     'progress':        1000,
     #Controls how often to write out to tensorboard
@@ -54,7 +54,7 @@ params = {
     'learningRateA':   5e-4,
     'learningRateW':   1e-3,
     #Lambda in energy function
-    'thresh':          .0007,
+    'thresh':          .00055,
     #Number of features in V1
     'numV':            256,
     'fc':              True,
@@ -64,7 +64,7 @@ params = {
     #Patch size not used with fc model
     'patchSizeY':      1,
     'patchSizeX':      1,
-    'inputMult':       1,
+    'inputMult':       .1,
 }
 
 from TFSparseCode.tf.lca_adam import LCA_ADAM
