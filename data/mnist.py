@@ -86,30 +86,36 @@ class mnistData(object):
         self.flatten=flatten
         self.getGt=getGt
         self.patch=patch
-
-        self.test_images = self.mnist.test.images
-        numTestImgs = self.test_images.shape[0]
-        self.test_images = np.reshape(self.test_images, (numTestImgs,) + self.raw_image_shape)
-        self.test_labels = self.mnist.test.labels
         if(self.translateSize is not None):
             self.inputShape = (translateSize[0], translateSize[1], 1)
-            #If translated, do test data here first
-            self.test_images = self.translate(self.test_images)
-
+        if(self.patch):
+            self.inputShape = (patchSize[0], patchSize[1], numPatchScales)
         if(self.clutterImg):
             #Extract a set of (training) images to pull clutter from
             self.clutterPallet, _ = self.mnist.train.next_batch(self.numClutterPallet)
             #Reshape into (N, y, x, f)
             self.clutterPallet = np.reshape(self.clutterPallet, (self.numClutterPallet,) + self.raw_image_shape)
-            #If cluttered, do test data here first
-            self.test_images = self.clutter(self.test_images)
-
+        #TODO abstract patch into new subclass
         if(self.patch):
-            self.inputShape = (patchSize[0], patchSize[1], numPatchScales)
             self.extractPatch = patchExtractor(patchSize, numPatchScales, zeroPad)
 
+        #Make test data
+        self.makeTestData()
+
+    #This function should set self.test_images and self.test_labels to maintain one set of test data
+    def makeTestData(self):
+        self.test_images = self.mnist.test.images
+        numTestImgs = self.test_images.shape[0]
+        self.test_images = np.reshape(self.test_images, (numTestImgs,) + self.raw_image_shape)
+        self.test_labels = self.mnist.test.labels
+        if(self.translateSize is not None):
+            self.test_images = self.translate(self.test_images)
+        if(self.clutterImg):
+            #If cluttered, do test data here first
+            self.test_images = self.clutter(self.test_images)
         if(self.flatten):
             self.test_images = np.reshape(self.test_images, [numTestImgs, -1])
+
 
     #Takes images of size (sample, features, and place digit on random position on canvas)
     def translate(self, images):
@@ -201,21 +207,98 @@ class mnistData(object):
 #        labels = self.mnist.validation.labels
 #        return(images, labels)
 
+class SDMnistData(mnistData):
+    numDistractorPallet = 50000
+    numClasses = 2
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert(self.patch == False)
+        assert(self.translateSize is not None)
+
+    def makeTestData(self):
+        #We make distractor pallet here
+        self.distractorPallet, _ = self.mnist.train.next_batch(self.numDistractorPallet)
+        self.distractorPallet = np.reshape(self.distractorPallet , (self.numDistractorPallet,) + self.raw_image_shape)
+
+        self.test_images = self.mnist.test.images
+        numTestImgs = self.test_images.shape[0]
+        self.test_images = np.reshape(self.test_images, (numTestImgs,) + self.raw_image_shape)
+        self.test_images, self.test_labels = self.sameDiff(self.test_images)
+
+        if(self.clutterImg):
+            #If cluttered, do test data here first
+            self.test_images = self.clutter(self.test_images)
+        if(self.flatten):
+            self.test_images = np.reshape(self.test_images, [numTestImgs, -1])
+
+    #places image onto canvas
+    #both should be only 1 image
+    def place(self, canvas, patch):
+        (ny, nx, nf) = canvas.shape
+        (pny, pnx, pnf) = patch.shape
+        assert(nf == pnf)
+        #Generate random location
+        idx_y = random.randint(0, ny - pny)
+        idx_x = random.randint(0, nx - pnx)
+        #Place patch onto image via alpha blending
+        canvas[idx_y:idx_y+pny, idx_x:idx_x+pnx, :] *= (1-patch)
+        canvas[idx_y:idx_y+pny, idx_x:idx_x+pnx, :] += patch
+        return canvas
+
+
+    #Same should be a [batch] boolean vector defining 0 if different, 1 if same
+    def sameDiff(self, images):
+        #Translate image first
+        translate_imgs = self.translate(images)
+        nBatch = images.shape[0]
+        outClass = np.random.randint(2, size=[nBatch])
+        outImgs = np.zeros(translate_imgs.shape)
+        for b in range(nBatch):
+            translate_img = translate_imgs[b]
+            #Different
+            if(outClass[b] == 0):
+                #Pick random distractor idx
+                d_idx = random.randint(0, self.numDistractorPallet-1)
+                imagePatch = self.distractorPallet[d_idx]
+            #Same
+            else:
+                imagePatch = images[b]
+
+            outImgs[b, :, :, :] = self.place(translate_img, imagePatch)
+        return (outImgs, outClass)
+
+    def getData(self, numExample):
+        images, _ = self.mnist.train.next_batch(numExample)
+        #Reshape into y, x, f
+        images = np.reshape(images, (numExample,) + self.raw_image_shape)
+
+        images, labels = self.sameDiff(images)
+
+        if(self.clutterImg):
+            images = self.clutter(images)
+        if(self.flatten):
+            images = np.reshape(images, [numExample, -1])
+
+        if(self.normalize):
+            images = (images - np.mean(images))/(np.std(images) + 1e-6)
+
+        if(self.getGt):
+            return (images, labels)
+        else:
+            return images
+
+
 if __name__ == "__main__":
     path = "/home/slundquist/mountData/datasets/mnist"
-    obj = mnistData(path, translateSize=(60, 60), clutterImg=True, flatten=False, patch=True, patchSize=[50, 50], zeroPad=True)
+    obj = SDMnistData(path, translateSize=(100, 100), clutterImg=False, flatten=False)
 
     for i in range(10):
         (data, gt) = obj.getData(4)
         plt.figure()
         r_data = data[0, :, :, 0]
         plt.imshow(r_data, cmap="gray")
-        plt.figure()
-        r_data = data[0, :, :, 1]
-        plt.imshow(r_data, cmap="gray")
-        plt.figure()
-        r_data = data[0, :, :, 2]
-        plt.imshow(r_data, cmap="gray")
+        print(gt[0])
         plt.show()
         plt.close('all')
 

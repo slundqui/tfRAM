@@ -117,6 +117,7 @@ class LocNet(object):
         self.loc_dim = config.loc_dim
         self.input_dim = config.cell_size
         self.loc_std = config.loc_std
+        self.loc_ratio = config.loc_pixel_ratio
 
         self.init_weights()
 
@@ -133,6 +134,7 @@ class LocNet(object):
 
     def __call__(self, input):
         mean = tf.nn.xw_plus_b(input, self.w, self.b)
+        mean = tf.clip_by_value(mean, -1.0/(2*self.loc_ratio), 1.0/(2*self.loc_ratio))
 
         #Adds random noise to the location for training
         train_loc = mean + tf.random_normal(

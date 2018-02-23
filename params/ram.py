@@ -15,7 +15,7 @@ class RamParams(object):
     #Progress step
     progress           = 100
     #Controls how often to write out to tensorboard
-    write_step         = 300
+    write_step         = 100
     #Flag for loading weights from checkpoint
     load               = False
     load_file          = ""

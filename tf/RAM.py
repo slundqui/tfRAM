@@ -77,6 +77,8 @@ class RAM(base):
 
                 #RNN base building block
                 lstm_cell = tf.contrib.rnn.BasicLSTMCell(self.params.cell_size)
+                #lstm_cell = tf.contrib.rnn.LSTMCell(self.params.cell_size,
+                #        use_peepholes=True)
                 #Initial state
                 state = lstm_cell.zero_state(N, tf.float32)
                 current_glimpse = self.gl(init_loc, self.is_train)
